@@ -1,0 +1,43 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: kolisync-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: kolisync_admin
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-kolisync_secure_password_2026}
+      POSTGRES_DB: kolisync_prod
+    ports:
+      # Expose sur 5433 côté Mac pour éviter tout conflit Homebrew
+      - "5433:5432"
+    volumes:
+      - kolisync_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U kolisync_admin -d kolisync_prod"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      # CRITIQUE : Laisse le temps à l'initdb de s'exécuter au premier lancement
+      start_period: 30s
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: kolisync-web
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      - DATABASE_URL=postgresql://kolisync_admin:${POSTGRES_PASSWORD:-kolisync_secure_password_2026}@db:5432/kolisync_prod?schema=public
+      - NODE_ENV=production
+      - JWT_SECRET=${JWT_SECRET}
+
+volumes:
+  kolisync_pg_data:
+    name: kolisync_pg_data

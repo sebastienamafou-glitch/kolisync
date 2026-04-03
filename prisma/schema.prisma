@@ -1,0 +1,199 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql" // Modifie si tu utilises sqlite
+  url      = env("DATABASE_URL")
+}
+
+// --- ENUMS EXISTANTS ---
+enum Role {
+  SUPERADMIN
+  OWNER
+  DISPATCHER
+  DRIVER
+}
+
+enum KycStatus {
+  UNVERIFIED
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum PackageStatus {
+  PENDING
+  DISPATCHED
+  AVAILABLE_PUBLIC
+  IN_TRANSIT
+  DELIVERED_VERIFIED
+  DELIVERED_UNSECURED
+  FAILED_RETURNED
+  CONFLICT
+}
+
+enum CashStatus {
+  UNCOLLECTED
+  HELD_BY_DRIVER
+  RECONCILED_WITH_SELLER
+  SETTLED_DIRECTLY_TO_MERCHANT
+}
+
+// --- NOUVEL ENUM POUR LE SOCIAL ---
+enum SocialTransactionType {
+  CONTRIBUTION // Prélèvement automatique sur course (ex: 100 FCFA)
+  PAYOUT       // Reversement effectif à la CNPS ou l'Assureur
+  ADJUSTMENT   // Correction manuelle par l'admin ou Gel/Restitution de caution
+}
+
+model Tenant {
+  id                 String         @id @default(cuid())
+  name               String
+  isPro              Boolean        @default(false)
+  subscriptionEndsAt DateTime?
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+
+  users              User[]
+  orders             Order[]
+  packageEvents      PackageEvent[]
+}
+
+model User {
+  id                String         @id @default(cuid())
+  tenantId          String
+  email             String?        @unique
+  phone             String         @unique
+  name              String
+  pinCode           String         
+  role              Role           @default(DRIVER)
+  preferredCommune  String?
+  maxCashLimit      Float          @default(50000)
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+
+  tenant            Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  driverOrders      Order[]        @relation("DriverOrders")
+  packageEvents     PackageEvent[] @relation("UserEvents")
+  
+  // Relation vers le Portefeuille Social
+  socialWallet      SocialWallet?
+  disputes          Dispute[]      @relation("DriverDisputes")
+  kycStatus         KycStatus      @default(UNVERIFIED)
+  idDocumentUrl     String?        // Lien vers le stockage (ex: S3, Supabase) de la CNI
+  selfieUrl         String?        // Lien vers la photo de vérification
+  kycRejectionReason String?       // Raison en cas de refus par l'Admin
+  kycSubmittedAt    DateTime?
+  kycVerifiedAt     DateTime?
+}
+
+model Order {
+  id                 String         @id @default(cuid())
+  tenantId           String
+  isPublic           Boolean        @default(false)
+  driverId           String?
+  customerName       String
+  customerPhone      String
+  deliveryAddress    String?
+  commune            String?
+  latitude           Float?
+  longitude          Float?
+  packageStatus      PackageStatus  @default(PENDING)
+  cashStatus         CashStatus     @default(UNCOLLECTED)
+  
+  amountDue          Float         
+  deliveryFee        Float          @default(0)
+  
+  // 🚨 NOUVEAU : Champ dédié pour isoler la caution (séquestre) du montant à encaisser
+  depositAmount      Float          @default(0)
+  
+  socialContribution Float          @default(0) 
+  securityPin        String?
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+
+  tenant             Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  driver             User?          @relation("DriverOrders", fields: [driverId], references: [id])
+  events             PackageEvent[] 
+  socialTransactions SocialTransaction[]
+  dispute            Dispute?
+  pickupAddress    String         // Adresse textuelle précise (ex: "Rue des Jardins, face pharmacie")
+  pickupLat        Float?         // Latitude précise pour le GPS
+  pickupLng        Float?         // Longitude précise pour le GPS
+}
+
+// --- NOUVEAUX MODÈLES SOCIAUX ---
+
+model SocialWallet {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  balance   Float    @default(0) // Cumul total virtuel (Retraite/Assurance)
+  updatedAt DateTime @updatedAt
+
+  user         User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions SocialTransaction[]
+}
+
+model SocialTransaction {
+  id        String                @id @default(cuid())
+  walletId  String
+  orderId   String?               // Plus de @unique ici pour autoriser plusieurs transactions par course
+  amount    Float
+  type      SocialTransactionType @default(CONTRIBUTION)
+  createdAt DateTime              @default(now())
+
+  wallet    SocialWallet          @relation(fields: [walletId], references: [id], onDelete: Cascade)
+  order     Order?                @relation(fields: [orderId], references: [id])
+}
+
+// --- AUTRES MODÈLES (EXISTANTS) ---
+
+model PackageEvent {
+  id          String         @id @default(cuid())
+  tenantId    String
+  orderId     String
+  authorId    String
+  fromStatus  PackageStatus?
+  toStatus    PackageStatus
+  logicalTs   Int            
+  latitude    Float?
+  longitude   Float?
+  reason      String?
+  createdAt   DateTime       @default(now())
+
+  tenant      Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  order       Order          @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  author      User           @relation("UserEvents", fields: [authorId], references: [id])
+}
+
+model CustomerRisk {
+  id              String         @id @default(cuid())
+  customerPhone   String         @unique
+  reportCount     Int            @default(0)
+  lastIncidentAt  DateTime       @default(now())
+  incidents       IncidentLog[]
+}
+
+model IncidentLog {
+  id              String       @id @default(cuid())
+  riskProfileId   String
+  tenantId        String      
+  reason          String       
+  createdAt       DateTime     @default(now())
+  riskProfile     CustomerRisk @relation(fields: [riskProfileId], references: [id])
+}
+
+model Dispute {
+  id              String   @id @default(cuid())
+  orderId         String   @unique
+  driverId        String
+  reason          String   // "Client absent", "Refus de payer", "Client prétend n'avoir rien reçu"
+  driverComment   String?  // Témoignage libre du livreur
+  latitude        Float?
+  longitude       Float?
+  createdAt       DateTime @default(now())
+
+  order  Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  driver User  @relation("DriverDisputes", fields: [driverId], references: [id])
+}
