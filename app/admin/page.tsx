@@ -31,13 +31,13 @@ const STATUS_SEGMENTS = [
   { key: "CONFLICT",            label: "Conflit",  color: "#ef4444" },
 ] as const;
 
-export default async function SuperAdminDashboard({
+export default async function AdminDashboard({
   searchParams,
 }: {
   searchParams: Promise<{ filter?: string }>;
 }) {
   const session = await getSession();
-  if (!session || session.role !== "SUPERADMIN") redirect("/");
+  if (!session || session.role !== "ADMIN") redirect("/");
 
   const resolvedParams = await searchParams;
   const currentFilter = resolvedParams.filter ?? "ALL";
@@ -182,7 +182,7 @@ export default async function SuperAdminDashboard({
 
           <div className="a1">
             <p className="f-mono text-[10px] font-bold uppercase tracking-[.22em] text-cyan-500/40 mb-1.5">
-              Tour de contrôle · SuperAdmin
+              Tour de contrôle · Admin
             </p>
             <h1 className="f-display text-3xl md:text-4xl font-black text-white leading-none">
               Vue d'ensemble système
