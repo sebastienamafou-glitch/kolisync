@@ -3,13 +3,13 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql" // Modifie si tu utilises sqlite
+  provider = "postgresql" 
   url      = env("DATABASE_URL")
 }
 
-// --- ENUMS EXISTANTS ---
+// --- ENUMS ---
 enum Role {
-  SUPERADMIN
+  ADMIN
   OWNER
   DISPATCHER
   DRIVER
@@ -40,12 +40,13 @@ enum CashStatus {
   SETTLED_DIRECTLY_TO_MERCHANT
 }
 
-// --- NOUVEL ENUM POUR LE SOCIAL ---
 enum SocialTransactionType {
-  CONTRIBUTION // Prélèvement automatique sur course (ex: 100 FCFA)
-  PAYOUT       // Reversement effectif à la CNPS ou l'Assureur
-  ADJUSTMENT   // Correction manuelle par l'admin ou Gel/Restitution de caution
+  CONTRIBUTION 
+  PAYOUT       
+  ADJUSTMENT   
 }
+
+// --- MODÈLES ---
 
 model Tenant {
   id                 String         @id @default(cuid())
@@ -77,15 +78,22 @@ model User {
   driverOrders      Order[]        @relation("DriverOrders")
   packageEvents     PackageEvent[] @relation("UserEvents")
   
-  // Relation vers le Portefeuille Social
   socialWallet      SocialWallet?
   disputes          Dispute[]      @relation("DriverDisputes")
+  
+  // --- MODULE KYC : Identité ---
   kycStatus         KycStatus      @default(UNVERIFIED)
-  idDocumentUrl     String?        // Lien vers le stockage (ex: S3, Supabase) de la CNI
-  selfieUrl         String?        // Lien vers la photo de vérification
-  kycRejectionReason String?       // Raison en cas de refus par l'Admin
+  idDocumentUrl     String?        // CNI / Passeport
+  selfieUrl         String?        // Photo de vérification
+  kycRejectionReason String?       // Raison en cas de refus
   kycSubmittedAt    DateTime?
   kycVerifiedAt     DateTime?
+
+  // --- MODULE KYC : Conformité Routière & Sécurité (Pour les DRIVER) ---
+  licensePlate           String?   // Plaque d'immatriculation
+  vehicleRegistrationUrl String?   // Photo de la carte grise
+  drivingLicenseUrl      String?   // Photo du permis de conduire
+  emergencyContact       String?   // Ex: "Mère: 0700000000"
 }
 
 model Order {
@@ -104,10 +112,7 @@ model Order {
   
   amountDue          Float         
   deliveryFee        Float          @default(0)
-  
-  // 🚨 NOUVEAU : Champ dédié pour isoler la caution (séquestre) du montant à encaisser
   depositAmount      Float          @default(0)
-  
   socialContribution Float          @default(0) 
   securityPin        String?
   createdAt          DateTime       @default(now())
@@ -118,17 +123,18 @@ model Order {
   events             PackageEvent[] 
   socialTransactions SocialTransaction[]
   dispute            Dispute?
-  pickupAddress    String         // Adresse textuelle précise (ex: "Rue des Jardins, face pharmacie")
-  pickupLat        Float?         // Latitude précise pour le GPS
-  pickupLng        Float?         // Longitude précise pour le GPS
+  
+  pickupAddress      String         
+  pickupLat          Float?
+  pickupLng          Float?
 }
 
-// --- NOUVEAUX MODÈLES SOCIAUX ---
+// --- MODÈLES SOCIAUX ---
 
 model SocialWallet {
   id        String   @id @default(cuid())
   userId    String   @unique
-  balance   Float    @default(0) // Cumul total virtuel (Retraite/Assurance)
+  balance   Float    @default(0) 
   updatedAt DateTime @updatedAt
 
   user         User                @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -138,7 +144,7 @@ model SocialWallet {
 model SocialTransaction {
   id        String                @id @default(cuid())
   walletId  String
-  orderId   String?               // Plus de @unique ici pour autoriser plusieurs transactions par course
+  orderId   String?
   amount    Float
   type      SocialTransactionType @default(CONTRIBUTION)
   createdAt DateTime              @default(now())
@@ -147,7 +153,7 @@ model SocialTransaction {
   order     Order?                @relation(fields: [orderId], references: [id])
 }
 
-// --- AUTRES MODÈLES (EXISTANTS) ---
+// --- MODÈLES DE LOGISTIQUE ET RISQUE ---
 
 model PackageEvent {
   id          String         @id @default(cuid())
@@ -181,6 +187,7 @@ model IncidentLog {
   tenantId        String      
   reason          String       
   createdAt       DateTime     @default(now())
+  
   riskProfile     CustomerRisk @relation(fields: [riskProfileId], references: [id])
 }
 
@@ -188,8 +195,8 @@ model Dispute {
   id              String   @id @default(cuid())
   orderId         String   @unique
   driverId        String
-  reason          String   // "Client absent", "Refus de payer", "Client prétend n'avoir rien reçu"
-  driverComment   String?  // Témoignage libre du livreur
+  reason          String   
+  driverComment   String?
   latitude        Float?
   longitude       Float?
   createdAt       DateTime @default(now())
