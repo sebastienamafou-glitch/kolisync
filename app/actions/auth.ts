@@ -2,8 +2,8 @@
 
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import prismaAdmin from "@/lib/prisma-admin"; // 🚨 INDISPENSABLE pour le login
-import { loginSchema, registerSchema } from "@/lib/dtos";
+import prismaAdmin from "@/lib/prisma-admin";
+import { loginSchema, registerSchema, registerDriverSchema } from "@/lib/dtos";
 import { SignJWT } from "jose";
 import bcrypt from "bcryptjs";
 
@@ -29,15 +29,15 @@ async function createSessionCookie(userId: string, role: string, tenantId: strin
   });
 }
 
+// ── loginAction ─────────────────────────────────────────────────────────
+
 export async function loginAction(prevState: unknown, formData: FormData) {
   let redirectPath = "";
 
   try {
     const data = Object.fromEntries(formData.entries());
-    
-    console.log("Données reçues :", data);
-
     const parsed = loginSchema.safeParse(data);
+    
     if (!parsed.success) {
       return { error: "Veuillez remplir tous les champs correctement." };
     }
@@ -61,24 +61,22 @@ export async function loginAction(prevState: unknown, formData: FormData) {
 
     await createSessionCookie(user.id, user.role, user.tenantId);
     
-    // 🚨 FIX : Le routage intelligent selon le rôle (KISS)
-    if (user.role === "SUPERADMIN") {
+    if (user.role === "ADMIN") {
       redirectPath = "/admin";
     } else if (user.role === "DRIVER") {
       redirectPath = "/pwa";
     } else {
-      // Pour OWNER et DISPATCHER
       redirectPath = "/b2b";
     }
 
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("Erreur Login:", error);
     return { error: "Erreur de connexion au serveur." };
   }
 
-  // 🚨 Note architecturale : redirect() doit TOUJOURS être appelé en dehors du try/catch dans Next.js !
   if (redirectPath) redirect(redirectPath);
 }
+
 // ── registerAction ─────────────────────────────────────────────────────────
 
 export async function registerAction(prevState: unknown, formData: FormData) {
@@ -89,13 +87,11 @@ export async function registerAction(prevState: unknown, formData: FormData) {
     const parsed = registerSchema.safeParse(data);
 
     if (!parsed.success) {
-      // 🚨 FIX : Utiliser .issues pour la compatibilité TypeScript Zod
       return { error: parsed.error.issues[0]?.message ?? "Données invalides." };
     }
 
     const { companyName, name, phone, pinCode } = parsed.data;
 
-    // 🚨 FIX : Recherche globale via prismaAdmin
     const existing = await prismaAdmin.user.findUnique({ where: { phone } });
     if (existing) {
       return { error: "Ce numéro de téléphone est déjà utilisé." };
@@ -118,7 +114,6 @@ export async function registerAction(prevState: unknown, formData: FormData) {
         },
       });
 
-      // Initialisation du portefeuille social (Attention : W majuscule)
       await tx.socialWallet.create({
         data: { userId: user.id, balance: 0 },
       });
@@ -129,15 +124,14 @@ export async function registerAction(prevState: unknown, formData: FormData) {
     await createSessionCookie(result.user.id, result.user.role, result.user.tenantId);
     redirectPath = "/b2b";
 
-  } catch {
+  } catch (error: unknown) {
     return { error: "Erreur lors de la création du compte." };
   }
 
   if (redirectPath) redirect(redirectPath);
 }
 
-// À ajouter tout en bas de app/actions/auth.ts
-import { registerDriverSchema } from "@/lib/dtos"; // N'oublie pas de l'importer en haut si ce n'est pas fait
+// ── registerDriverAction ───────────────────────────────────────────────────
 
 export async function registerDriverAction(prevState: unknown, formData: FormData) {
   let redirectPath = "";
@@ -160,12 +154,10 @@ export async function registerDriverAction(prevState: unknown, formData: FormDat
     const hashedPin = await bcrypt.hash(pinCode, 12);
 
     const result = await prismaAdmin.$transaction(async (tx) => {
-      // 1. Création du "micro-tenant" pour le livreur indépendant
       const tenant = await tx.tenant.create({
         data: { name: `Flotte Indépendante - ${name}` },
       });
 
-      // 2. Création du compte Livreur (avec un plafond de confiance de base)
       const user = await tx.user.create({
         data: {
           tenantId: tenant.id,
@@ -174,11 +166,10 @@ export async function registerDriverAction(prevState: unknown, formData: FormDat
           pinCode: hashedPin,
           role: "DRIVER",
           preferredCommune,
-          maxCashLimit: 20000, // Plafond de départ strict pour limiter les risques
+          maxCashLimit: 20000,
         },
       });
 
-      // 3. Initialisation du portefeuille social
       await tx.socialWallet.create({
         data: { userId: user.id, balance: 0 },
       });
@@ -187,9 +178,9 @@ export async function registerDriverAction(prevState: unknown, formData: FormDat
     });
 
     await createSessionCookie(result.user.id, result.user.role, result.user.tenantId);
-    redirectPath = "/pwa"; // On le redirige direct vers l'application livreur !
+    redirectPath = "/pwa"; 
 
-  } catch (error) {
+  } catch (error: unknown) {
     console.error(error);
     return { error: "Erreur lors de l'inscription." };
   }
