@@ -198,17 +198,27 @@ export default function PublicHomePage() {
 
         {/* ══ NAV ══════════════════════════════════════════════════════════════ */}
         <nav className="nav-blur sticky top-0 z-50">
-          <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="h-9 w-9 rounded-xl overflow-hidden relative"
-                   style={{ boxShadow: "0 0 16px rgba(212,168,67,.2)", border: "1px solid rgba(212,168,67,.15)" }}>
-                <Image src="/logo.png" alt="KoliSync" fill className="object-contain p-1" />
-              </div>
-              <span className="f-display text-xl font-bold text-white tracking-tight">KoliSync</span>
-              <span className="hidden sm:inline-block text-[9px] font-bold uppercase tracking-[.2em] px-2 py-0.5 rounded badge">
-                Côte d&apos;Ivoire
-              </span>
+        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6">
+          <div className="flex items-center gap-3">
+            {/* Logo Wrapper : Cadre supprimé, styles basculés en classes Tailwind si nécessaire */}
+            <div className="relative h-30 w-30 overflow-hidden rounded-xl">
+              <Image 
+                src="/logo-kolisync-dark.svg" 
+                alt="KoliSync" 
+                fill 
+                className="object-contain p-1"
+                priority
+              />
             </div>
+            
+            <span className="f-display text-xl font-bold tracking-tight text-white">
+              KoliSync
+            </span>
+            
+            <span className="hidden text-[9px] font-bold uppercase tracking-[.2em] sm:inline-block">
+              Côte d&apos;Ivoire
+            </span>
+          </div>
             <Link href="/login"
               className="btn-ghost flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-bold">
               Se connecter <ArrowRight className="h-4 w-4" />
@@ -317,6 +327,31 @@ export default function PublicHomePage() {
             </div>
           </div>
         </header>
+
+        {/* ══ BANNER IMAGE ════════════════════════════════════════════════════ */}
+        <div className="relative w-full overflow-hidden"
+             style={{ height: "clamp(200px, 32vw, 500px)" }}>
+          <Image
+            src="/bannier.png"
+            alt="KoliSync — Logistique connectée et visible en temps réel"
+            fill
+            sizes="100vw"
+            className="object-cover object-center"
+            priority
+          />
+          {/* Fondu haut : blend avec le hero nuit */}
+          <div className="absolute inset-x-0 top-0 h-28 pointer-events-none"
+               style={{ background: "linear-gradient(to bottom, #080A0E 0%, transparent 100%)" }} />
+          {/* Fondu bas : blend avec la bande stats */}
+          <div className="absolute inset-x-0 bottom-0 h-28 pointer-events-none"
+               style={{ background: "linear-gradient(to top, #0D1017 0%, transparent 100%)" }} />
+          {/* Voile latéral gauche subtil */}
+          <div className="absolute inset-y-0 left-0 w-20 pointer-events-none"
+               style={{ background: "linear-gradient(to right, rgba(8,10,14,.6) 0%, transparent 100%)" }} />
+          {/* Voile latéral droit subtil */}
+          <div className="absolute inset-y-0 right-0 w-20 pointer-events-none"
+               style={{ background: "linear-gradient(to left, rgba(8,10,14,.6) 0%, transparent 100%)" }} />
+        </div>
 
         {/* ══ STATS ════════════════════════════════════════════════════════════ */}
         <section className="a3" style={{ background: "var(--surface)", borderTop: "1px solid var(--border)", borderBottom: "1px solid var(--border)" }}>

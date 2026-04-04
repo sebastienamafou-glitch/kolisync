@@ -26,9 +26,11 @@ export const registerSchema = z.object({
   pinCode:     z.string()
                  .length(4, "Le PIN doit faire exactement 4 chiffres")
                  .regex(/^\d{4}$/, "Le PIN doit contenir uniquement des chiffres"),
+  // 🚨 GARDE-FOU BACKEND : Syntaxe Zod corrigée pour ta version
+  acceptTerms: z.literal("on", {
+    error: "Vous devez accepter les CGU et la Politique de Confidentialité.",
+  }),
 });
-
-// À ajouter à la fin de ton fichier lib/dtos.ts
 
 export const registerDriverSchema = z.object({
   name: z.string().min(2, "Le nom complet est requis (min 2 caractères)"),
@@ -37,6 +39,10 @@ export const registerDriverSchema = z.object({
              .length(4, "Le PIN doit faire exactement 4 chiffres")
              .regex(/^\d{4}$/, "Le PIN doit contenir uniquement des chiffres"),
   preferredCommune: z.string().min(2, "Veuillez choisir votre zone de prédilection"),
+  // 🚨 GARDE-FOU BACKEND : Syntaxe Zod corrigée pour ta version
+  acceptTerms: z.literal("on", {
+    error: "Vous devez accepter les CGU et la Politique de Confidentialité.",
+  }),
 });
 
 export type RegisterDriverInput = z.infer<typeof registerDriverSchema>;

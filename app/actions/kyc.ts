@@ -3,15 +3,16 @@
 import { revalidatePath } from "next/cache";
 import prismaAdmin from "@/lib/prisma-admin";
 import { getSession } from "@/lib/session";
+import { sendSMS } from "@/lib/sms";
 
 export async function approveKycAction(userId: string) {
   const session = await getSession();
-  if (!session || session.role !== "SUPERADMIN") {
-    return { error: "Non autorisé. Accès SuperAdmin requis." };
+  if (!session || session.role !== "ADMIN") {
+    return { error: "Non autorisé. Accès Admin requis." };
   }
 
   try {
-    await prismaAdmin.user.update({
+    const updatedUser = await prismaAdmin.user.update({
       where: { id: userId },
       data: { 
         kycStatus: "APPROVED", 
@@ -19,6 +20,12 @@ export async function approveKycAction(userId: string) {
         kycRejectionReason: null
       }
     });
+
+    // 📲 Déclenchement de la notification d'activation
+    await sendSMS(
+      updatedUser.phone,
+      "KoliSync: Félicitations ! Votre profil est activé. Vous pouvez dès maintenant accepter vos premières courses."
+    );
 
     revalidatePath("/admin");
     revalidatePath("/admin/kyc");
@@ -31,8 +38,8 @@ export async function approveKycAction(userId: string) {
 
 export async function rejectKycAction(formData: FormData) {
   const session = await getSession();
-  if (!session || session.role !== "SUPERADMIN") {
-    return { error: "Non autorisé. Accès SuperAdmin requis." };
+  if (!session || session.role !== "ADMIN") {
+    return { error: "Non autorisé. Accès Admin requis." };
   }
 
   const userId = formData.get("userId") as string;
@@ -43,13 +50,19 @@ export async function rejectKycAction(formData: FormData) {
   }
 
   try {
-    await prismaAdmin.user.update({
+    const updatedUser = await prismaAdmin.user.update({
       where: { id: userId },
       data: { 
         kycStatus: "REJECTED", 
         kycRejectionReason: reason 
       }
     });
+
+    // 📲 Déclenchement de la notification de refus
+    await sendSMS(
+      updatedUser.phone,
+      `KoliSync: Votre dossier a été refusé. Motif: ${reason}. Veuillez mettre à jour vos documents sur l'application.`
+    );
 
     revalidatePath("/admin");
     revalidatePath("/admin/kyc");

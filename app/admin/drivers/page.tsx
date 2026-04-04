@@ -7,7 +7,7 @@ import { updateDriverCashLimitAction } from "@/app/actions/admin"; // 🚨 NOUVE
 
 export default async function AdminDriversPage() {
   const session = await getSession();
-  if (!session || session.role !== "SUPERADMIN") redirect("/");
+  if (!session || session.role !== "ADMIN") redirect("/");
 
   const drivers = await prismaAdmin.user.findMany({
     where: { role: "DRIVER" },

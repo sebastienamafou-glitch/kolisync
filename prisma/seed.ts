@@ -25,10 +25,11 @@ async function main() {
   const tenantB = await prisma.tenant.create({ data: { name: 'Boutique Beta (Externe)' } });
 
   console.log('⏳ Création de la hiérarchie des Utilisateurs...');
-  const superAdmin = await prisma.user.create({
+  
+  const adminHQ = await prisma.user.create({
     data: {
-      tenantId: hqTenant.id, name: 'SuperAdmin HQ', email: 'admin@kolisync.com',
-      phone: '0000000000', pinCode: hashedPin, role: 'SUPERADMIN',
+      tenantId: hqTenant.id, name: 'Admin HQ', email: 'admin@kolisync.com',
+      phone: '0000000000', pinCode: hashedPin, role: 'ADMIN',
     },
   });
 
@@ -46,19 +47,36 @@ async function main() {
     },
   });
 
-  // Livreur 1 (Assigné par défaut au Tenant A)
+  // Livreur 1 (Assigné par défaut au Tenant A) - 🚨 PROFIL TOTALEMENT APPROUVÉ (KYC + Véhicule)
   const driver1 = await prisma.user.create({
     data: {
       tenantId: tenantA.id, name: 'Livreur Alpha', email: 'alpha@kolisync.com',
-      phone: '0500000001', pinCode: hashedPin, role: 'DRIVER', preferredCommune: 'Plateau', maxCashLimit: 50000
+      phone: '0500000001', pinCode: hashedPin, role: 'DRIVER', preferredCommune: 'Plateau', maxCashLimit: 50000,
+      kycStatus: 'APPROVED',
+      idDocumentUrl: 'https://placehold.co/600x400/png?text=CNI+Alpha',
+      selfieUrl: 'https://placehold.co/600x400/png?text=Selfie+Alpha',
+      drivingLicenseUrl: 'https://placehold.co/600x400/png?text=Permis+Alpha',
+      vehicleRegistrationUrl: 'https://placehold.co/600x400/png?text=Carte+Grise+Alpha',
+      licensePlate: '1234 AB 01',
+      emergencyContact: 'Mère: 0700000000',
+      kycSubmittedAt: new Date(Date.now() - 86400000), // Soumis il y a 24h
+      kycVerifiedAt: new Date()
     },
   });
 
-  // Livreur 2 (Assigné par défaut au Tenant B)
+  // Livreur 2 (Assigné par défaut au Tenant B) - 🚨 PROFIL EN ATTENTE POUR TESTER LE DASHBOARD HQ
   const driver2 = await prisma.user.create({
     data: {
       tenantId: tenantB.id, name: 'Livreur Beta', email: 'beta@kolisync.com',
-      phone: '0500000002', pinCode: hashedPin, role: 'DRIVER', preferredCommune: 'Cocody', maxCashLimit: 50000
+      phone: '0500000002', pinCode: hashedPin, role: 'DRIVER', preferredCommune: 'Cocody', maxCashLimit: 50000,
+      kycStatus: 'PENDING',
+      idDocumentUrl: 'https://placehold.co/600x400/png?text=CNI+Beta',
+      selfieUrl: 'https://placehold.co/600x400/png?text=Selfie+Beta',
+      drivingLicenseUrl: 'https://placehold.co/600x400/png?text=Permis+Beta',
+      vehicleRegistrationUrl: 'https://placehold.co/600x400/png?text=Carte+Grise+Beta',
+      licensePlate: '9876 XYZ 02',
+      emergencyContact: 'Frère: 0500000099',
+      kycSubmittedAt: new Date()
     },
   });
 
@@ -147,7 +165,7 @@ async function main() {
   // 5. Commande en Litige (CONFLICT)
   const orderConflictA = await prisma.order.create({
     data: {
-      tenantId: tenantA.id, driverId: driver1.id, customerName: 'Client E2E Litige', customerPhone: '0799999999', // Utilise le mauvais client
+      tenantId: tenantA.id, driverId: driver1.id, customerName: 'Client E2E Litige', customerPhone: '0799999999', 
       commune: 'Abobo', amountDue: 20000, deliveryFee: 1500, 
       pickupAddress: 'Boutique Alpha, Plateau', pickupLat: locPlateau.lat, pickupLng: locPlateau.lng,
       packageStatus: 'CONFLICT', securityPin: '5555',
@@ -168,7 +186,6 @@ async function main() {
   });
 
   // --- SCÉNARIOS BOURSE GLOBALE (Cross-Tenant) ---
-  // Commandes visibles dans l'onglet "Opportunités" des livreurs
   await prisma.order.create({
     data: {
       tenantId: tenantA.id, customerName: 'Opportunité Publique 1', customerPhone: '0700000030', 
@@ -198,8 +215,8 @@ async function main() {
   console.log(`👑 Admin HQ   : 0000000000`);
   console.log(`🏪 Vendeur A  : 0100000001`);
   console.log(`🏪 Vendeur B  : 0200000002`);
-  console.log(`🛵 Livreur 1  : 0500000001 (⚠️ Proche de sa limite de cash: 45k/50k)`);
-  console.log(`🛵 Livreur 2  : 0500000002`);
+  console.log(`🛵 Livreur 1  : 0500000001 (✅ Approuvé - ⚠️ Proche limite cash)`);
+  console.log(`🛵 Livreur 2  : 0500000002 (⏳ En attente de validation KYC)`);
   console.log(`\n🚨 Numéro client blacklisté pour vos tests de création : 0799999999`);
 }
 

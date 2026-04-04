@@ -1,13 +1,13 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { ChevronLeft, ShieldCheck, UserX, FileText, CheckCircle2, XCircle } from "lucide-react";
+import { ChevronLeft, ShieldCheck, UserX, FileText, CheckCircle2, XCircle, CreditCard, FileBadge } from "lucide-react";
 import prismaAdmin from "@/lib/prisma-admin";
 import { getSession } from "@/lib/session";
 import { approveKycAction, rejectKycAction } from "@/app/actions/kyc";
 
 export default async function AdminKycPage() {
   const session = await getSession();
-  if (!session || session.role !== "SUPERADMIN") redirect("/");
+  if (!session || session.role !== "ADMIN") redirect("/");
 
   const pendingUsers = await prismaAdmin.user.findMany({
     where: { kycStatus: "PENDING" },
@@ -20,6 +20,10 @@ export default async function AdminKycPage() {
       kycSubmittedAt: true,
       idDocumentUrl: true,
       selfieUrl: true,
+      drivingLicenseUrl: true,
+      vehicleRegistrationUrl: true,
+      licensePlate: true,
+      emergencyContact: true,
       tenant: { select: { name: true } }
     }
   });
@@ -36,7 +40,6 @@ export default async function AdminKycPage() {
 
       <div className="min-h-screen bg-gray-950 text-slate-50 f-body hq-grid selection:bg-cyan-500/20 pb-24">
         
-        {/* HEADER */}
         <header className="sticky top-0 z-50 border-b border-slate-800/50 bg-gray-950/85 backdrop-blur-2xl">
           <div className="max-w-screen-xl mx-auto px-6 h-14 flex items-center gap-4">
             <Link href="/admin" className="p-2 -ml-2 rounded-lg hover:bg-slate-800/50 transition-colors">
@@ -74,21 +77,36 @@ export default async function AdminKycPage() {
                       </span>
                     </div>
                     <p className="f-mono text-[11px] text-cyan-400 mb-1">{user.phone}</p>
-                    <p className="text-[11px] text-slate-500 line-clamp-1">{user.tenant.name}</p>
-                    <p className="f-mono text-[9px] text-slate-600 mt-2">
+                    <p className="text-[11px] text-slate-500 line-clamp-1 mb-2">{user.tenant?.name}</p>
+                    
+                    {/* Nouvelles infos routières */}
+                    <div className="bg-slate-950 p-2 rounded-lg border border-slate-800/50 space-y-1 mt-3">
+                      <p className="f-mono text-[10px] text-slate-400"><span className="text-slate-500">Plaque:</span> {user.licensePlate || "N/A"}</p>
+                      <p className="f-mono text-[10px] text-red-400"><span className="text-slate-500">Urgence:</span> {user.emergencyContact || "N/A"}</p>
+                    </div>
+
+                    <p className="f-mono text-[9px] text-slate-600 mt-3">
                       Soumis le: {user.kycSubmittedAt?.toLocaleDateString("fr-FR")}
                     </p>
                   </div>
 
                   {/* Documents (KISS: Liens directs) */}
                   <div className="grid grid-cols-2 gap-2 mb-6">
-                    <a href={user.idDocumentUrl || "#"} target="_blank" rel="noreferrer" className="flex flex-col items-center justify-center p-4 rounded-xl border border-slate-800/50 bg-slate-950 hover:border-cyan-500/30 transition-colors">
-                      <FileText className="h-5 w-5 text-slate-400 mb-2" />
-                      <span className="text-[10px] font-bold uppercase tracking-widest text-slate-300">CNI</span>
+                    <a href={user.idDocumentUrl || "#"} target="_blank" rel="noreferrer" className="flex flex-col items-center justify-center p-3 rounded-xl border border-slate-800/50 bg-slate-950 hover:border-cyan-500/30 transition-colors">
+                      <FileText className="h-4 w-4 text-slate-400 mb-1.5" />
+                      <span className="text-[9px] font-bold uppercase tracking-widest text-slate-300">CNI</span>
                     </a>
-                    <a href={user.selfieUrl || "#"} target="_blank" rel="noreferrer" className="flex flex-col items-center justify-center p-4 rounded-xl border border-slate-800/50 bg-slate-950 hover:border-cyan-500/30 transition-colors">
-                      <UserX className="h-5 w-5 text-slate-400 mb-2" />
-                      <span className="text-[10px] font-bold uppercase tracking-widest text-slate-300">Selfie</span>
+                    <a href={user.selfieUrl || "#"} target="_blank" rel="noreferrer" className="flex flex-col items-center justify-center p-3 rounded-xl border border-slate-800/50 bg-slate-950 hover:border-cyan-500/30 transition-colors">
+                      <UserX className="h-4 w-4 text-slate-400 mb-1.5" />
+                      <span className="text-[9px] font-bold uppercase tracking-widest text-slate-300">Selfie</span>
+                    </a>
+                    <a href={user.drivingLicenseUrl || "#"} target="_blank" rel="noreferrer" className="flex flex-col items-center justify-center p-3 rounded-xl border border-slate-800/50 bg-slate-950 hover:border-cyan-500/30 transition-colors">
+                      <CreditCard className="h-4 w-4 text-indigo-400 mb-1.5" />
+                      <span className="text-[9px] font-bold uppercase tracking-widest text-slate-300">Permis</span>
+                    </a>
+                    <a href={user.vehicleRegistrationUrl || "#"} target="_blank" rel="noreferrer" className="flex flex-col items-center justify-center p-3 rounded-xl border border-slate-800/50 bg-slate-950 hover:border-cyan-500/30 transition-colors">
+                      <FileBadge className="h-4 w-4 text-purple-400 mb-1.5" />
+                      <span className="text-[9px] font-bold uppercase tracking-widest text-slate-300">C. Grise</span>
                     </a>
                   </div>
 

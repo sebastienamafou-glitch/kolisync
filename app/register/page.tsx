@@ -35,7 +35,6 @@ export default function RegisterPage() {
         <div className="bg-white py-10 px-8 shadow-2xl shadow-slate-200/60 rounded-[2.5rem] border border-slate-100">
           <form action={formAction} className="space-y-6">
 
-            {/* Affichage des erreurs serveur */}
             {state?.error && (
               <div className="flex items-start gap-3 rounded-2xl bg-red-50 px-4 py-4 ring-1 ring-red-200 animate-in fade-in slide-in-from-top-2">
                 <AlertCircle className="h-5 w-5 shrink-0 text-red-500 mt-0.5" />
@@ -43,7 +42,6 @@ export default function RegisterPage() {
               </div>
             )}
 
-            {/* Section Entreprise */}
             <div className="space-y-2">
               <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1">
                 Structure
@@ -67,7 +65,6 @@ export default function RegisterPage() {
               <div className="relative flex justify-center text-xs uppercase"><span className="bg-white px-4 font-black text-slate-300 tracking-widest">Propriétaire</span></div>
             </div>
 
-            {/* Section Utilisateur */}
             <div className="space-y-4">
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
@@ -113,10 +110,27 @@ export default function RegisterPage() {
               </div>
             </div>
 
+            {/* 🚨 CHECKBOX LÉGALE BOUTIQUE B2B */}
+            <div className="flex items-start gap-3 mt-6">
+              <input
+                type="checkbox"
+                name="acceptTerms"
+                id="acceptTermsB2B"
+                required
+                className="mt-0.5 h-4 w-4 shrink-0 rounded border-slate-300 text-slate-900 focus:ring-slate-900"
+              />
+              <label htmlFor="acceptTermsB2B" className="text-[11px] text-slate-500 leading-relaxed font-medium">
+                J&apos;ai lu et j&apos;accepte les{" "}
+                <Link href="/cgu" className="font-bold text-slate-900 hover:underline">Conditions Générales d&apos;Utilisation</Link>
+                {" "}et la{" "}
+                <Link href="/privacy" className="font-bold text-slate-900 hover:underline">Politique de Confidentialité</Link>.
+              </label>
+            </div>
+
             <button
               type="submit"
               disabled={isPending}
-              className="w-full flex justify-center items-center gap-3 py-4 px-6 rounded-2xl bg-slate-900 text-white font-black hover:bg-slate-800 transition-all active:scale-95 shadow-xl shadow-slate-900/20 disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100 mt-4"
+              className="w-full flex justify-center items-center gap-3 py-4 px-6 rounded-2xl bg-slate-900 text-white font-black hover:bg-slate-800 transition-all active:scale-95 shadow-xl shadow-slate-900/20 disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100 mt-6"
             >
               {isPending ? (
                 <>

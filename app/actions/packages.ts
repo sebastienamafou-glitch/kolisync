@@ -6,26 +6,8 @@ import prisma from "@/lib/prisma";
 import { createPackageSchema } from "@/lib/dtos";
 import { getSession } from "@/lib/session";
 import { sendDeliveryPinSMS } from "@/lib/sms";
-
-export async function checkCustomerRiskAction(phone: string) {
-  const session = await getSession();
-  if (!session) return { error: "Non authentifié" };
-
-  try {
-    const risk = await prisma.customerRisk.findUnique({
-      where: { customerPhone: phone },
-      select: { reportCount: true }
-    });
-
-    return { 
-      isHighRisk: (risk?.reportCount || 0) >= 2,
-      reportCount: risk?.reportCount || 0 
-    };
-  } catch (error) {
-    console.error("🔥 Erreur checkCustomerRiskAction :", error);
-    return { isHighRisk: false, reportCount: 0 };
-  }
-}
+// 🚨 NOUVEL IMPORT : On utilise le Trust Engine centralisé
+import { checkCustomerRiskAction } from "@/app/actions/risk";
 
 export async function createPackageAction(prevState: unknown, formData: FormData) {
   const session = await getSession();
@@ -39,7 +21,6 @@ export async function createPackageAction(prevState: unknown, formData: FormData
   }
 
   try {
-    // ✅ CORRECTION TS : On crée un objet distinct et typé pour Zod
     const rawData = Object.fromEntries(formData.entries());
     const dataToParse = {
       ...rawData,
@@ -49,13 +30,13 @@ export async function createPackageAction(prevState: unknown, formData: FormData
     const parsed = createPackageSchema.safeParse(dataToParse);
 
     if (!parsed.success) {
-      // ✅ CORRECTION TS : Zod utilise '.issues' et non '.errors'
       const errorMessage = 
         parsed.error?.issues?.[0]?.message || 
         "Veuillez vérifier les données saisies (ex: les prix doivent être des nombres).";
 
       return { error: errorMessage };
     }
+
     // 🚨 VÉRIFICATION DU QUOTA D'ABONNEMENT
     const tenant = await prisma.tenant.findUnique({
       where: { id: session.tenantId },
@@ -83,7 +64,7 @@ export async function createPackageAction(prevState: unknown, formData: FormData
       isPublic 
     } = parsed.data;
 
-    // 📍 EXTRACTION DES DONNÉES DE RETRAIT (SÉCURISÉE)
+    // 📍 EXTRACTION DES DONNÉES DE RETRAIT
     const pickupAddress = (formData.get("pickupAddress") as string) || "Adresse de la boutique";
     const pickupLatStr = formData.get("pickupLat");
     const pickupLngStr = formData.get("pickupLng");
@@ -93,11 +74,9 @@ export async function createPackageAction(prevState: unknown, formData: FormData
 
     const generatedPin = Math.floor(1000 + Math.random() * 9000).toString();
 
-    const riskInfo = await prisma.customerRisk.findUnique({
-      where: { customerPhone },
-      select: { reportCount: true }
-    });
-    const isHighRisk = (riskInfo?.reportCount || 0) >= 2;
+    // 🚨 KOLISYNC TRUST ENGINE : Évaluation du risque au moment de la création
+    const riskAnalysis = await checkCustomerRiskAction(customerPhone);
+    const isHighRisk = riskAnalysis.status === "DANGER" || riskAnalysis.status === "WARNING";
 
     const initialStatus = isPublic ? "AVAILABLE_PUBLIC" : "PENDING";
 
@@ -112,9 +91,9 @@ export async function createPackageAction(prevState: unknown, formData: FormData
           amountDue,
           deliveryFee, 
           depositAmount: depositAmount || 0, 
-          pickupAddress: pickupAddress.trim(), // ✅ Enregistrement du texte
-          pickupLat,                           // ✅ Enregistrement GPS (Float | null)
-          pickupLng,                           // ✅ Enregistrement GPS (Float | null)
+          pickupAddress: pickupAddress.trim(),
+          pickupLat,
+          pickupLng,
           packageStatus: initialStatus,
           cashStatus: "UNCOLLECTED",
           isPublic: isPublic,
@@ -130,7 +109,10 @@ export async function createPackageAction(prevState: unknown, formData: FormData
           authorId: session.userId,
           toStatus: initialStatus,
           logicalTs: Math.floor(Date.now() / 1000), 
-          reason: isHighRisk ? "ALERTE_RISQUE_CLIENT_VIGILANCE" : (isPublic ? "Publié sur la Bourse Globale" : "Création manuelle"),
+          // Insertion du motif exact du Trust Engine dans l'historique
+          reason: isHighRisk 
+            ? `⚠️ ALERTE FRAUDE KOLISYNC : ${riskAnalysis.lastReason}` 
+            : (isPublic ? "Publié sur la Bourse Globale" : "Création manuelle"),
         },
       });
 

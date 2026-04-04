@@ -8,7 +8,9 @@ import {
   Radar,
   Store,
   Navigation,
-  ChevronRight
+  ChevronRight,
+  ShieldAlert,
+  AlertTriangle
 } from "lucide-react";
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/session";
@@ -34,7 +36,7 @@ export default async function PWADashboardPage() {
         packageStatus: "DISPATCHED" 
       },
       orderBy: { updatedAt: "desc" },
-      include: { tenant: { select: { name: true } } } // On inclut le nom de la boutique
+      include: { tenant: { select: { name: true } } }
     }),
     prisma.order.findMany({
       where: { 
@@ -50,6 +52,18 @@ export default async function PWADashboardPage() {
   ]);
 
   const socialBalance = wallet?.balance ?? 0;
+
+  // 🚨 KOLISYNC TRUST ENGINE : Protection du Livreur
+  // On extrait les numéros des clients en cours de livraison
+  const displayedPhones = [...new Set(deliveries.map(o => o.customerPhone))];
+  const riskProfiles = await prisma.customerRisk.findMany({
+    where: { 
+      customerPhone: { in: displayedPhones },
+      reportCount: { gte: 2 } 
+    },
+    select: { customerPhone: true, reportCount: true }
+  });
+  const riskMap = new Map(riskProfiles.map(r => [r.customerPhone, r.reportCount]));
 
   return (
     <div className="p-4 space-y-8 bg-slate-50 min-h-screen pb-24 font-sans">
@@ -174,56 +188,86 @@ export default async function PWADashboardPage() {
           </div>
         ) : (
           <div className="space-y-4">
-            {deliveries.map((order) => (
-              <Link
-                key={order.id}
-                href={`/pwa/packages/${order.id}`}
-                className="block overflow-hidden rounded-[2.5rem] bg-white shadow-sm ring-1 ring-slate-200 transition-all hover:shadow-md active:scale-[0.98]"
-              >
-                <div className="p-5">
-                  <div className="mb-5 flex items-start justify-between">
-                    <div className="flex items-center gap-4">
-                      <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-[1.25rem] bg-emerald-50 text-emerald-600 ring-1 ring-emerald-100">
-                        <Package className="h-7 w-7" />
+            {deliveries.map((order) => {
+              // 🚨 Récupération du score de risque pour ce colis précis
+              const riskCount = riskMap.get(order.customerPhone);
+              const isDanger = riskCount && riskCount >= 3;
+              const isWarning = riskCount && riskCount === 2;
+
+              return (
+                <Link
+                  key={order.id}
+                  href={`/pwa/packages/${order.id}`}
+                  className="block overflow-hidden rounded-[2.5rem] bg-white shadow-sm ring-1 ring-slate-200 transition-all hover:shadow-md active:scale-[0.98]"
+                >
+                  <div className="p-5">
+                    <div className="mb-5 flex items-start justify-between">
+                      <div className="flex items-center gap-4">
+                        <div className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-[1.25rem] ${isDanger ? 'bg-red-50 text-red-600 ring-1 ring-red-100' : 'bg-emerald-50 text-emerald-600 ring-1 ring-emerald-100'}`}>
+                          <Package className="h-7 w-7" />
+                        </div>
+                        <div>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <p className="text-lg font-black text-slate-900 leading-tight">{order.customerName}</p>
+                            {isDanger && (
+                              <span className="flex items-center gap-1 rounded bg-red-100 px-1.5 py-0.5 text-[9px] font-black uppercase text-red-700 ring-1 ring-red-200 shadow-sm">
+                                <ShieldAlert className="h-3 w-3" /> Fraude
+                              </span>
+                            )}
+                            {isWarning && (
+                              <span className="flex items-center gap-1 rounded bg-orange-100 px-1.5 py-0.5 text-[9px] font-black uppercase text-orange-700 ring-1 ring-orange-200 shadow-sm">
+                                <AlertTriangle className="h-3 w-3" /> Suspect
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-[11px] font-bold text-slate-400 tracking-widest uppercase mt-0.5">
+                            ID: <span className="text-slate-600">{order.id.slice(-6).toUpperCase()}</span>
+                          </p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="text-lg font-black text-slate-900 leading-tight">{order.customerName}</p>
-                        <p className="text-[11px] font-bold text-slate-400 tracking-widest uppercase mt-0.5">
-                          ID: <span className="text-slate-600">{order.id.slice(-6).toUpperCase()}</span>
+                    </div>
+
+                    <div className="space-y-4 rounded-[1.5rem] bg-slate-50 p-5 text-sm ring-1 ring-slate-100">
+                      <div className="flex items-center gap-4 text-slate-700">
+                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white ring-1 ring-slate-200 shadow-sm">
+                          <Phone className="h-4 w-4 text-slate-500" />
+                        </div>
+                        <span className="font-black text-lg tracking-wide">{order.customerPhone}</span>
+                      </div>
+                      {order.deliveryAddress && (
+                        <div className="flex items-start gap-4 text-slate-600">
+                          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white ring-1 ring-slate-200 shadow-sm mt-0.5">
+                            <MapPin className="h-4 w-4 text-slate-500" />
+                          </div>
+                          <span className="line-clamp-2 leading-snug font-semibold pt-1">{order.deliveryAddress}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* BANNIÈRE D'ALERTE POUR LE LIVREUR */}
+                    {isDanger && (
+                      <div className="mt-4 flex items-start gap-3 rounded-2xl bg-red-50 p-4 ring-1 ring-red-200 border border-red-100 shadow-inner">
+                        <ShieldAlert className="h-5 w-5 shrink-0 text-red-600" />
+                        <p className="text-[11px] font-bold text-red-900 leading-relaxed">
+                          <span className="uppercase tracking-wider block mb-1">Vigilance Absolue</span>
+                          Ce client a de multiples litiges réseau. Exigez le paiement ou le code PIN avant de remettre physiquement le colis.
                         </p>
                       </div>
-                    </div>
-                  </div>
-
-                  <div className="space-y-4 rounded-[1.5rem] bg-slate-50 p-5 text-sm ring-1 ring-slate-100">
-                    <div className="flex items-center gap-4 text-slate-700">
-                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white ring-1 ring-slate-200 shadow-sm">
-                        <Phone className="h-4 w-4 text-slate-500" />
-                      </div>
-                      <span className="font-black text-lg tracking-wide">{order.customerPhone}</span>
-                    </div>
-                    {order.deliveryAddress && (
-                      <div className="flex items-start gap-4 text-slate-600">
-                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white ring-1 ring-slate-200 shadow-sm mt-0.5">
-                          <MapPin className="h-4 w-4 text-slate-500" />
-                        </div>
-                        <span className="line-clamp-2 leading-snug font-semibold pt-1">{order.deliveryAddress}</span>
-                      </div>
                     )}
-                  </div>
 
-                  <div className="mt-5 flex items-center justify-between pt-1 px-1">
-                    <div>
-                      <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Cash à collecter</p>
-                      <p className="text-2xl font-black text-slate-900">{formatFCFA(order.amountDue)}</p>
-                    </div>
-                    <div className="flex h-14 w-14 items-center justify-center rounded-[1.25rem] bg-slate-900 text-white shadow-lg shadow-slate-900/20 transition-colors">
-                      <ChevronRight className="h-6 w-6" />
+                    <div className="mt-5 flex items-center justify-between pt-1 px-1">
+                      <div>
+                        <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Cash à collecter</p>
+                        <p className="text-2xl font-black text-slate-900">{formatFCFA(order.amountDue)}</p>
+                      </div>
+                      <div className={`flex h-14 w-14 items-center justify-center rounded-[1.25rem] shadow-lg transition-colors ${isDanger ? 'bg-red-600 shadow-red-600/20' : 'bg-slate-900 shadow-slate-900/20'} text-white`}>
+                        <ChevronRight className="h-6 w-6" />
+                      </div>
                     </div>
                   </div>
-                </div>
-              </Link>
-            ))}
+                </Link>
+              );
+            })}
           </div>
         )}
       </section>

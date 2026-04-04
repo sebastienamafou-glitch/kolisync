@@ -19,7 +19,7 @@ import {
   Lock,
   Store
 } from "lucide-react";
-import { createPackageAction, checkCustomerRiskAction } from "@/app/actions/packages";
+import { checkCustomerRiskAction } from "@/app/actions/risk";
 
 const COMMUNES = [
   "Plateau", "Cocody", "Abobo", "Adjamé", "Attécoubé", 

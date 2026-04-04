@@ -5,9 +5,9 @@ import prismaAdmin from "@/lib/prisma-admin";
 import { getSession } from "@/lib/session";
 
 // ── UTILITAIRE DE SÉCURITÉ (God Mode Only) ──
-async function verifySuperAdmin() {
+async function verifyAdmin() {
   const session = await getSession();
-  if (!session || session.role !== "SUPERADMIN") {
+  if (!session || session.role !== "ADMIN") {
     throw new Error("Accès refusé. Réservé au QG KoliSync.");
   }
   return session;
@@ -15,7 +15,7 @@ async function verifySuperAdmin() {
 
 // ── 1. MODULE BOUTIQUES : Activer/Désactiver l'abonnement PRO ──
 export async function toggleTenantProAction(tenantId: string, currentStatus: boolean) {
-  await verifySuperAdmin();
+  await verifyAdmin();
 
   try {
     await prismaAdmin.tenant.update({
@@ -25,14 +25,14 @@ export async function toggleTenantProAction(tenantId: string, currentStatus: boo
     
     revalidatePath("/admin/tenants");
     return { success: true };
-  } catch (error) {
+  } catch (error: unknown) {
     return { error: "Erreur lors de la modification du statut Pro." };
   }
 }
 
 // ── 2. MODULE LIVREURS : Ajuster le plafond de confiance ──
 export async function updateDriverCashLimitAction(formData: FormData) {
-  await verifySuperAdmin();
+  await verifyAdmin();
 
   const driverId = formData.get("driverId") as string;
   const newLimit = parseFloat(formData.get("newLimit") as string);
@@ -49,7 +49,7 @@ export async function updateDriverCashLimitAction(formData: FormData) {
     
     revalidatePath("/admin/drivers");
     return { success: true };
-  } catch (error) {
+  } catch (error: unknown) {
     return { error: "Erreur lors de la mise à jour du plafond." };
   }
 }
@@ -58,7 +58,7 @@ export async function updateDriverCashLimitAction(formData: FormData) {
 export async function resolveDisputeAction(formData: FormData) {
   console.log("🚨 [HQ] Demande d'arbitrage reçue !"); 
   
-  const session = await verifySuperAdmin();
+  const session = await verifyAdmin();
 
   const disputeId = formData.get("disputeId") as string;
   const orderId = formData.get("orderId") as string;
@@ -73,8 +73,6 @@ export async function resolveDisputeAction(formData: FormData) {
 
       const newStatus = decision === "VALIDATE" ? "DELIVERED_VERIFIED" : "FAILED_RETURNED";
       
-      // 🚨 FIX : On met à jour le cashStatus UNIQUEMENT si on valide la livraison.
-      // Si on annule, on ne touche pas au statut financier de la commande.
       const updateData = decision === "VALIDATE" 
         ? { packageStatus: newStatus, cashStatus: "HELD_BY_DRIVER" as const }
         : { packageStatus: newStatus };
@@ -107,7 +105,7 @@ export async function resolveDisputeAction(formData: FormData) {
     revalidatePath("/admin"); 
     return { success: true };
     
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("❌ [HQ] Erreur fatale lors de l'arbitrage :", error); 
     return { error: "Erreur lors de l'arbitrage du litige." };
   }

@@ -71,6 +71,23 @@ export default function RegisterDriverPage() {
             <p className="mt-2 text-[10px] text-slate-500">Ce code te servira pour te connecter et valider les livraisons.</p>
           </div>
 
+          {/* 🚨 CHECKBOX LÉGALE LIVREUR */}
+          <div className="flex items-start gap-3 mt-6">
+            <input
+              type="checkbox"
+              name="acceptTerms"
+              id="acceptTerms"
+              required
+              className="mt-0.5 h-4 w-4 shrink-0 rounded border-slate-700 bg-slate-950 text-blue-600 focus:ring-blue-600 focus:ring-offset-slate-900"
+            />
+            <label htmlFor="acceptTerms" className="text-[11px] text-slate-400 leading-relaxed">
+              J&apos;ai lu et j&apos;accepte les{" "}
+              <Link href="/cgu" className="text-blue-400 hover:underline">Conditions Générales d&apos;Utilisation</Link>
+              {" "}et la{" "}
+              <Link href="/privacy" className="text-blue-400 hover:underline">Politique de Confidentialité</Link>.
+            </label>
+          </div>
+
           <div className="pt-2">
             <SubmitButton />
           </div>

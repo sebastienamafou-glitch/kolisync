@@ -4,22 +4,13 @@ import { useActionState, useState, useEffect } from "react";
 import { useFormStatus } from "react-dom";
 import Link from "next/link";
 import { 
-  ArrowLeft, 
-  User, 
-  Phone, 
-  MapPin, 
-  Banknote, 
-  Loader2, 
-  PackagePlus,
-  ShieldAlert,
-  ShieldCheck,
-  Globe,
-  Map,
-  Zap,
-  Lock,
-  Store
+  ArrowLeft, User, Phone, MapPin, Banknote, Loader2, PackagePlus,
+  ShieldAlert, ShieldCheck, Globe, Map, Zap, Lock, Store
 } from "lucide-react";
-import { createPackageAction, checkCustomerRiskAction } from "@/app/actions/packages";
+
+import { createPackageAction } from "@/app/actions/packages";
+// 🚨 CORRECTION : On importe notre nouveau moteur de risque dédié
+import { checkCustomerRiskAction, type RiskResponse } from "@/app/actions/risk";
 
 const COMMUNES = [
   "Plateau", "Cocody", "Abobo", "Adjamé", "Attécoubé", 
@@ -54,27 +45,21 @@ function SubmitButton() {
 export default function NewPackagePage() {
   const [state, formAction] = useActionState(createPackageAction, null);
   const [phone, setPhone] = useState("");
-  const [risk, setRisk] = useState<{ isHighRisk: boolean; reportCount: number } | null>(null);
+  // 🚨 CORRECTION : Utilisation du typage strict du Trust Engine
+  const [risk, setRisk] = useState<RiskResponse | null>(null);
 
   useEffect(() => {
     const checkRisk = async () => {
-      if (phone.replace(/\s/g, "").length >= 8) {
-        const result = await checkCustomerRiskAction(phone);
-        
-        // ✅ CORRECTION TS : On s'assure que 'isHighRisk' existe bien dans la réponse
-        if (result && "isHighRisk" in result && typeof result.isHighRisk === "boolean") {
-          setRisk({
-            isHighRisk: result.isHighRisk,
-            reportCount: result.reportCount as number
-          });
-        } else {
-          setRisk(null);
-        }
+      const cleanPhone = phone.replace(/\s/g, "");
+      if (cleanPhone.length >= 8) {
+        const result = await checkCustomerRiskAction(cleanPhone);
+        setRisk(result);
       } else {
         setRisk(null);
       }
     };
     
+    // Debounce : évite de spammer la base de données à chaque frappe
     const timer = setTimeout(checkRisk, 500);
     return () => clearTimeout(timer);
   }, [phone]);
@@ -131,7 +116,6 @@ export default function NewPackagePage() {
             </div>
           ) : null}
 
-          {/* 🚨 NOUVEAU : Adresse de Retrait */}
           <div className="rounded-2xl border border-blue-100 bg-blue-50/30 p-4 mb-6">
             <label htmlFor="pickupAddress" className="block text-sm font-semibold text-blue-900">
               Adresse de retrait (Boutique / Entrepôt)
@@ -154,7 +138,6 @@ export default function NewPackagePage() {
 
           <hr className="border-slate-100" />
 
-          {/* Destinataire */}
           <div>
             <label htmlFor="customerName" className="block text-sm font-semibold text-slate-900">
               Nom du destinataire
@@ -172,7 +155,7 @@ export default function NewPackagePage() {
             </div>
           </div>
 
-          {/* Téléphone + Alerte Risque */}
+          {/* 🚨 KOLISYNC TRUST ENGINE : Interface de Radar */}
           <div>
             <label htmlFor="customerPhone" className="block text-sm font-semibold text-slate-900">
               Numéro de téléphone
@@ -187,28 +170,50 @@ export default function NewPackagePage() {
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
                 placeholder="Ex: 01 77 00 00 01"
-                className={`block w-full rounded-xl border-0 py-3 pl-10 pr-3 text-slate-900 ring-1 ring-inset placeholder:text-slate-400 focus:ring-2 focus:ring-inset sm:text-sm ${
-                  risk?.isHighRisk 
-                    ? "ring-orange-400 focus:ring-orange-500" 
-                    : "ring-slate-300 focus:ring-amber-500"
+                className={`block w-full rounded-xl border-0 py-3 pl-10 pr-3 text-slate-900 ring-1 ring-inset placeholder:text-slate-400 focus:ring-2 focus:ring-inset sm:text-sm transition-colors ${
+                  risk?.status === "DANGER" ? "ring-red-400 focus:ring-red-500" : 
+                  risk?.status === "WARNING" ? "ring-orange-400 focus:ring-orange-500" : 
+                  risk?.status === "SAFE" ? "ring-emerald-400 focus:ring-emerald-500 bg-emerald-50/30" : 
+                  "ring-slate-300 focus:ring-amber-500"
                 }`}
               />
             </div>
 
-            {risk?.isHighRisk && (
-              <div className="mt-3 flex items-start gap-3 rounded-xl bg-orange-50 p-4 ring-1 ring-orange-200 animate-in slide-in-from-top-2">
-                <ShieldAlert className="h-5 w-5 shrink-0 text-orange-600 mt-0.5" />
+            {/* Affichage conditionnel des badges de sécurité */}
+            {risk?.status === "DANGER" && (
+              <div className="mt-3 flex items-start gap-3 rounded-xl bg-red-50 p-4 ring-1 ring-red-200 animate-in slide-in-from-top-2">
+                <ShieldAlert className="h-5 w-5 shrink-0 text-red-600 mt-0.5" />
                 <div>
-                  <p className="text-sm font-bold text-orange-900">Client à risque élevé</p>
-                  <p className="mt-1 text-xs text-orange-700 leading-relaxed">
-                    Signalé <span className="font-black">{risk.reportCount} fois</span>. PIN de sécurité fortement conseillé.
+                  <p className="text-sm font-bold text-red-900">Fraudeur détecté par KoliSync</p>
+                  <p className="mt-1 text-xs text-red-700 leading-relaxed">
+                    Signalé <span className="font-black">{risk.reportCount} fois</span> sur le réseau. <br/>
+                    Dernier motif : <span className="italic">"{risk.lastReason}"</span>. <br/>
+                    <strong className="text-red-900">Paiement d'avance (Mobile Money) fortement exigé.</strong>
                   </p>
                 </div>
               </div>
             )}
+
+            {risk?.status === "WARNING" && (
+              <div className="mt-3 flex items-start gap-3 rounded-xl bg-orange-50 p-4 ring-1 ring-orange-200 animate-in slide-in-from-top-2">
+                <ShieldAlert className="h-5 w-5 shrink-0 text-orange-600 mt-0.5" />
+                <div>
+                  <p className="text-sm font-bold text-orange-900">Client à risque (Avertissement)</p>
+                  <p className="mt-1 text-xs text-orange-700 leading-relaxed">
+                    Signalé <span className="font-black">{risk.reportCount} fois</span>. <br/>
+                    Dernier motif : <span className="italic">"{risk.lastReason}"</span>. <br/>PIN de sécurité conseillé.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {risk?.status === "SAFE" && (
+              <div className="mt-3 flex items-center gap-2 text-[11px] font-bold text-emerald-600 animate-in fade-in uppercase tracking-widest">
+                <ShieldCheck className="h-4 w-4" /> Client fiable (Aucun litige)
+              </div>
+            )}
           </div>
 
-          {/* Localisation : Commune + Adresse */}
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
             <div>
               <label htmlFor="commune" className="block text-sm font-semibold text-slate-900">
@@ -266,7 +271,6 @@ export default function NewPackagePage() {
 
           <hr className="border-slate-100" />
 
-          {/* Finances */}
           <div className="space-y-6">
             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
               <div>

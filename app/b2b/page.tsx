@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import {
   Package, Banknote, CheckCircle2, Clock, Plus, MapPin, 
   Lock, Globe, MessageCircle, ShieldCheck, User, AlertTriangle,
-  Filter, BarChart3, Search, ChevronRight, Zap, Eye
+  Filter, BarChart3, Search, ChevronRight, Zap, Eye, ShieldAlert
 } from "lucide-react";
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/session";
@@ -112,6 +112,18 @@ export default async function B2BDashboardPage({
     })
   ]);
 
+  // 🚨 KOLISYNC TRUST ENGINE : Requête groupée (O(1)) pour les numéros de la liste
+  const displayedPhones = [...new Set(filteredOrders.map(o => o.customerPhone))];
+  const riskProfiles = await prisma.customerRisk.findMany({
+    where: { 
+      customerPhone: { in: displayedPhones },
+      reportCount: { gte: 2 } // On ne récupère que les profils suspects
+    },
+    select: { customerPhone: true, reportCount: true }
+  });
+  // Création d'un dictionnaire pour une lecture ultra-rapide côté rendu
+  const riskMap = new Map(riskProfiles.map(r => [r.customerPhone, r.reportCount]));
+
   const cashToReconcile = Math.max(0, (heldCashAgg._sum.amountDue || 0) - (heldCashAgg._sum.deliveryFee || 0));
   const successRate = monthlyTotalCount > 0 ? Math.round((successfulDeliveriesCount / monthlyTotalCount) * 100) : 0;
 
@@ -157,7 +169,7 @@ export default async function B2BDashboardPage({
               Synchronisé en temps réel
             </p>
           </div>
-          <Link href="/b2b/packages/new" className="flex items-center justify-center gap-2 rounded-2xl bg-slate-900 px-6 py-3.5 text-sm font-black text-white shadow-xl shadow-slate-900/20 transition-transform hover:bg-slate-800 active:scale-95">
+          <Link href="/b2b/create" className="flex items-center justify-center gap-2 rounded-2xl bg-slate-900 px-6 py-3.5 text-sm font-black text-white shadow-xl shadow-slate-900/20 transition-transform hover:bg-slate-800 active:scale-95">
             <Plus className="h-5 w-5" />
             Nouvelle expédition
           </Link>
@@ -165,6 +177,7 @@ export default async function B2BDashboardPage({
 
         {/* ── KPI GRID ── */}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 a2">
+          {/* ... (KPI Cards inchangées pour rester concis) ... */}
           <div className="card-pro rounded-[2rem] bg-white p-6 shadow-sm ring-1 ring-slate-100">
             <div className="mb-4 flex items-center justify-between">
               <div className="rounded-xl bg-blue-50 p-2.5 text-blue-600"><Package className="h-5 w-5" /></div>
@@ -214,7 +227,7 @@ export default async function B2BDashboardPage({
           {/* COLONNE GAUCHE : FLUX & OPÉRATIONS (2/3) */}
           <div className="xl:col-span-2 space-y-6">
             
-            {/* Barre de répartition segmentée (CRDT) */}
+            {/* ... (Barre de répartition CRDT inchangée) ... */}
             <div className="rounded-[2rem] bg-white p-6 shadow-sm ring-1 ring-slate-200">
               <div className="flex items-center gap-2 mb-5">
                 <BarChart3 className="h-4 w-4 text-slate-400" />
@@ -296,6 +309,11 @@ export default async function B2BDashboardPage({
                     {filteredOrders.map(order => {
                       const isActive = !["DELIVERED_VERIFIED", "DELIVERED_UNSECURED", "FAILED_RETURNED"].includes(order.packageStatus);
                       const waLink = `https://wa.me/${order.customerPhone?.replace(/\D/g, '')}?text=Bonjour%20${encodeURIComponent(order.customerName)}%2C%20votre%20code%20KoliSync%20est%20%3A%20${order.securityPin}`;
+                      
+                      // 🚨 Radar KoliSync : Récupération du statut exact pour cette commande
+                      const riskCount = riskMap.get(order.customerPhone);
+                      const isDanger = riskCount && riskCount >= 3;
+                      const isWarning = riskCount && riskCount === 2;
 
                       return (
                         <div key={order.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-2xl hover:bg-slate-50 transition-colors border border-transparent hover:border-slate-100 group">
@@ -305,8 +323,21 @@ export default async function B2BDashboardPage({
                               <Package className="h-5 w-5" />
                             </div>
                             <div>
-                              <div className="flex items-center gap-2">
+                              <div className="flex items-center flex-wrap gap-2">
                                 <p className="font-bold text-slate-900 text-sm">{order.customerName}</p>
+                                
+                                {/* BADGES RADAR DE RISQUE */}
+                                {isDanger && (
+                                  <span className="flex items-center gap-1 rounded bg-red-100 px-1.5 py-0.5 text-[8px] font-black uppercase text-red-700 ring-1 ring-red-200" title={`Fraudeur potentiel : ${riskCount} signalements`}>
+                                    <ShieldAlert className="h-2.5 w-2.5" /> Haut Risque
+                                  </span>
+                                )}
+                                {isWarning && (
+                                  <span className="flex items-center gap-1 rounded bg-orange-100 px-1.5 py-0.5 text-[8px] font-black uppercase text-orange-700 ring-1 ring-orange-200" title={`Client suspect : ${riskCount} signalements`}>
+                                    <AlertTriangle className="h-2.5 w-2.5" /> Vigilance
+                                  </span>
+                                )}
+
                                 {order.isPublic && (
                                   <span className="flex items-center gap-1 rounded bg-fuchsia-100 px-1.5 py-0.5 text-[8px] font-black uppercase text-fuchsia-700"><Globe className="h-2.5 w-2.5" /> Pool</span>
                                 )}
@@ -348,7 +379,6 @@ export default async function B2BDashboardPage({
                               <StatusBadge status={order.packageStatus} />
                             </div>
 
-                            {/* ── NOUVEAU BOUTON DE TRAÇABILITÉ ── */}
                             <Link 
                               href={`/b2b/orders/${order.id}`}
                               className="ml-2 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-500 hover:bg-slate-200 hover:text-slate-900 transition-colors ring-1 ring-slate-200/50"
@@ -375,7 +405,7 @@ export default async function B2BDashboardPage({
           {/* COLONNE DROITE : FINANCES & SÉCURITÉ (1/3) */}
           <div className="space-y-6">
             
-            {/* Box Réconciliation */}
+            {/* ... (Box Réconciliation et Protocole inchangés) ... */}
             <div className="rounded-[2.5rem] bg-slate-900 p-6 shadow-xl relative overflow-hidden border border-slate-800">
               <div className="absolute top-0 right-0 h-32 w-32 bg-emerald-500/10 rounded-full blur-2xl -mr-10 -mt-10" />
               

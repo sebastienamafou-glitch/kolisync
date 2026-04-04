@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { MapPin, Package, Banknote, Navigation, CheckCircle, Loader2, Info } from "lucide-react";
-import { claimPublicOrderAction } from "@/app/actions/delivery";
+import { MapPin, Package, Navigation, CheckCircle, Loader2, Info } from "lucide-react";
+// 🚨 CORRECTION : Importation de la bonne action depuis le module marketplace
+import { claimOpportunityAction } from "@/app/actions/marketplace";
 
 interface Order {
   id: string;
@@ -32,11 +33,12 @@ export function BassinCoursesClient({
   const handleClaim = async (orderId: string) => {
     setError(null);
     startTransition(async () => {
-      const result = await claimPublicOrderAction(orderId);
+      // 🚨 CORRECTION : Appel de la fonction claimOpportunityAction
+      const result = await claimOpportunityAction(orderId);
       if (result?.error) {
         setError(result.error);
         // On remonte en haut pour voir l'erreur
-        window.scrollTo({ top: 0, behavior: 'smooth' });
+        window.scrollTo({ top: 0, behavior: "smooth" });
       }
     });
   };

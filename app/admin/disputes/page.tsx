@@ -7,7 +7,7 @@ import { resolveDisputeAction } from "@/app/actions/admin";
 
 export default async function AdminDisputesPage() {
   const session = await getSession();
-  if (!session || session.role !== "SUPERADMIN") redirect("/");
+  if (!session || session.role !== "ADMIN") redirect("/");
 
   const disputes = await prismaAdmin.dispute.findMany({
     include: {

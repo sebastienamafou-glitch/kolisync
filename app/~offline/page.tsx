@@ -1,5 +1,6 @@
+"use client";
+
 import { WifiOff, RefreshCw } from "lucide-react";
-import Link from "next/link";
 
 export default function OfflineFallbackPage() {
   return (
@@ -13,15 +14,15 @@ export default function OfflineFallbackPage() {
         Vous êtes actuellement dans une zone sans couverture réseau. Vérifiez votre connexion 4G/3G.
       </p>
 
-      <div className="mt-8 flex flex-col gap-3 w-full max-w-xs">
-        {/* Le rechargement de la page relancera l'appel réseau via le SW */}
-        <Link 
-          href="/" 
-          className="flex items-center justify-center gap-2 rounded-2xl bg-amber-500 px-4 py-4 text-sm font-bold text-slate-900 shadow-lg active:scale-95 transition-transform"
+      <div className="mt-8 flex w-full max-w-xs flex-col gap-3">
+        {/* Un rechargement natif force le navigateur et le SW à retenter la requête réseau sur la page ACTUELLE */}
+        <button 
+          onClick={() => window.location.reload()}
+          className="flex w-full items-center justify-center gap-2 rounded-2xl bg-amber-500 px-4 py-4 text-sm font-bold text-slate-900 shadow-lg transition-transform active:scale-95"
         >
           <RefreshCw className="h-5 w-5" />
           Réessayer
-        </Link>
+        </button>
       </div>
     </div>
   );

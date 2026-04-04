@@ -7,7 +7,7 @@ import { toggleTenantProAction } from "@/app/actions/admin"; // 🚨 NOUVEL IMPO
 
 export default async function AdminTenantsPage() {
   const session = await getSession();
-  if (!session || session.role !== "SUPERADMIN") redirect("/");
+  if (!session || session.role !== "ADMIN") redirect("/");
 
   const tenants = await prismaAdmin.tenant.findMany({
     include: { _count: { select: { users: true, orders: true } } },
