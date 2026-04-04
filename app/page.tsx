@@ -203,7 +203,7 @@ export default function PublicHomePage() {
             {/* Logo Wrapper : Cadre supprimé, styles basculés en classes Tailwind si nécessaire */}
             <div className="relative h-30 w-30 overflow-hidden rounded-xl">
               <Image 
-                src="/logo-kolisync-dark.svg" 
+                src="/logo.png" 
                 alt="KoliSync" 
                 fill 
                 className="object-contain p-1"
