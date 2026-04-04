@@ -33,7 +33,8 @@ async function checkSmartCashLimit(driverId: string) {
 
 // ── ASSIGNATION DEPUIS LE RADAR PUBLIC ─────────────────
 
-export async function assignOrderAction(orderId: string) {
+// 🚨 CORRECTION : Renommé de assignOrderAction à claimPublicOrderAction
+export async function claimPublicOrderAction(orderId: string) {
   const session = await getSession();
   if (!session || !session.userId || session.role !== "DRIVER") {
     return { error: "Accès non autorisé. Vous devez être connecté en tant que livreur." };
