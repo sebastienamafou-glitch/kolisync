@@ -40,14 +40,14 @@ export default async function middleware(request: NextRequest) {
     // ── RBAC : Isolation stricte des espaces par rôle ──────────────────────
 
     // 🚨 Protection GOD MODE : Seul le SUPERADMIN peut accéder à /admin
-    if (isAdminRoute && role !== "SUPERADMIN") {
+    if (isAdminRoute && role !== "ADMIN") {
       // On le renvoie vers son espace légitime
       if (role === "DRIVER") return NextResponse.redirect(new URL("/pwa", request.url));
       return NextResponse.redirect(new URL("/b2b", request.url));
     }
 
-    // Le SUPERADMIN a le droit de se balader partout (B2B, PWA, Admin)
-    if (role === "SUPERADMIN") {
+    // L'ADMIN a le droit de se balader partout (B2B, PWA, Admin)
+    if (role === "ADMIN") {
       // Pas de blocage pour le boss
     } else {
       // Un livreur ne peut pas accéder à l'espace vendeur
@@ -86,8 +86,11 @@ export default async function middleware(request: NextRequest) {
     return response;
   }
 }
-
-// 🚨 Ne pas oublier de mettre à jour le matcher pour inclure /admin !
+// 🚨 CORRECTION DÉFINITIVE À APPLIQUER :
 export const config = {
-  matcher: ["/b2b/:path*", "/pwa/:path*", "/admin/:path*"],
+  matcher: [
+    "/b2b", "/b2b/:path*", 
+    "/pwa", "/pwa/:path*", 
+    "/admin", "/admin/:path*"
+  ],
 };
