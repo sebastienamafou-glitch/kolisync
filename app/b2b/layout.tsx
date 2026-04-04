@@ -3,6 +3,7 @@ import { B2BShell } from "@/components/layout/B2BShell";
 import { getSession } from "@/lib/session";
 import prisma from "@/lib/prisma";
 import { getSoftLockState } from "@/lib/soft-lock";
+import WhatsAppButton from "@/components/ui/WhatsAppButton"; // 🚨 Ajout de l'import
 
 export default async function B2BLayout({
   children,
@@ -26,12 +27,17 @@ export default async function B2BLayout({
   const userInitials = userName.substring(0, 2).toUpperCase();
 
   return (
-    <B2BShell
-      softLockState={softLockState}
-      userName={userName}
-      userInitials={userInitials}
-    >
-      {children}
-    </B2BShell>
+    <>
+      <B2BShell
+        softLockState={softLockState}
+        userName={userName}
+        userInitials={userInitials}
+      >
+        {children}
+      </B2BShell>
+      
+      {/* 🚨 Injection du bouton flottant pour l'assistance vendeur */}
+      <WhatsAppButton />
+    </>
   );
 }

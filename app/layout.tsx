@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "@/styles/globals.css";
 import PwaInstallPrompt from "@/components/PwaInstallPrompt";
+import WhatsAppButton from "@/components/ui/WhatsAppButton";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -38,6 +39,7 @@ export default function RootLayout({
         {children}
         {/* Le composant d'installation PWA est monté globalement ici */}
         <PwaInstallPrompt />
+        <WhatsAppButton />
       </body>
     </html>
   );
