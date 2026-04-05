@@ -520,6 +520,7 @@ export default function PublicHomePage() {
                 <Link href="/terms"   className="hover:text-white transition-colors">CGU</Link>
                 <Link href="/privacy" className="hover:text-white transition-colors">Confidentialité</Link>
                 <Link href="/contact" className="hover:text-white transition-colors">Contact</Link>
+                <Link href="/help" className="hover:text-white transition-colors">help</Link>
               </div>
 
               {/* Made by webappci.com */}
@@ -532,6 +533,7 @@ export default function PublicHomePage() {
                   <span className="f-display text-base font-bold text-white"
                         style={{ transition: "background .2s" }}>
                     webappci.com
+                    <Image src="/logo2.png" alt="WebappCi Logo" width={80} height={30} className="object-contain grayscale hover:grayscale-0 transition-all" />
                   </span>
                   <span className="badge inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full">
                     <Globe2 className="h-2.5 w-2.5" /> Abidjan, CI
