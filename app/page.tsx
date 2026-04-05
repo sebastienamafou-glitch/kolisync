@@ -201,7 +201,7 @@ export default function PublicHomePage() {
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6">
           <div className="flex items-center gap-3">
             {/* Logo Wrapper : Cadre supprimé, styles basculés en classes Tailwind si nécessaire */}
-            <div className="relative h-10 w-10 overflow-hidden rounded-xl">
+            <div className="relative h-20 w-20 overflow-hidden rounded-xl">
               <Image 
                 src="/logo.png" 
                 alt="KoliSync" 
