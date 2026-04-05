@@ -1,5 +1,5 @@
 import { PrismaClient } from '@prisma/client';
-import bcrypt from 'bcryptjs';
+import bcrypt from 'bcrypt'; // 🚨 CORRECTION : On utilise bcrypt (et non bcryptjs) pour être 100% aligné avec l'Auth
 
 const prisma = new PrismaClient();
 
@@ -16,8 +16,8 @@ async function main() {
   await prisma.tenant.deleteMany();
 
   console.log('⏳ Hachage du code PIN universel (1234)...');
-  const salt = await bcrypt.genSalt(10);
-  const hashedPin = await bcrypt.hash('1234', salt);
+  const saltRounds = 10;
+  const hashedPin = await bcrypt.hash('1234', saltRounds);
 
   console.log('⏳ Création de l\'architecture Multi-Tenant...');
   const hqTenant = await prisma.tenant.create({ data: { name: 'KoliSync HQ', isPro: true } });

@@ -1,12 +1,12 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import crypto from "crypto";
+import bcrypt from "bcrypt"; // 🚨 CORRECTION : Utilisation de bcrypt au lieu de crypto
 import prisma from "@/lib/prisma";
 
 export async function registerSellerAction(prevState: unknown, formData: FormData) {
   const shopName = formData.get("shopName") as string;
-  const ownerName = formData.get("ownerName") as string; // 👈 Nouveau champ
+  const ownerName = formData.get("ownerName") as string;
   const phone = formData.get("phone") as string;
   const pin = formData.get("pin") as string;
   const confirmPin = formData.get("confirmPin") as string;
@@ -39,8 +39,9 @@ export async function registerSellerAction(prevState: unknown, formData: FormDat
       return { error: "Ce numéro de téléphone est déjà utilisé." };
     }
 
-    // 3. Hachage du PIN 
-    const pinHash = crypto.createHash("sha256").update(pin).digest("hex");
+    // 3. Hachage du PIN avec Bcrypt (10 salt rounds est le standard)
+    const saltRounds = 10;
+    const pinHash = await bcrypt.hash(pin, saltRounds);
 
     // 4. Transaction Atomique 
     await prisma.$transaction(async (tx) => {
@@ -54,15 +55,16 @@ export async function registerSellerAction(prevState: unknown, formData: FormDat
       await tx.user.create({
         data: {
           tenantId: tenant.id,
-          name: ownerName.trim(), // ✅ On injecte le vrai nom
+          name: ownerName.trim(),
           phone: cleanPhone,
-          pinCode: pinHash,
+          pinCode: pinHash, // ✅ Le hachage est maintenant compatible avec le login
           role: "OWNER",
         }
       });
     });
 
-  } catch {
+  } catch (error) {
+    console.error("Erreur lors de l'inscription :", error);
     return { error: "Une erreur est survenue lors de la création du compte." };
   }
 

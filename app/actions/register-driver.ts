@@ -1,7 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import crypto from "crypto";
+import bcrypt from "bcrypt"; // 🚨 CORRECTION : Bcrypt remplace l'ancien module crypto
 import prisma from "@/lib/prisma";
 
 export async function registerDriverAction(prevState: unknown, formData: FormData) {
@@ -36,7 +36,9 @@ export async function registerDriverAction(prevState: unknown, formData: FormDat
       return { error: "Ce numéro de téléphone est déjà lié à un compte." };
     }
 
-    const pinHash = crypto.createHash("sha256").update(pin).digest("hex");
+    // 🚨 CORRECTION : Hachage Bcrypt standardisé avec 10 tours de sel
+    const saltRounds = 10;
+    const pinHash = await bcrypt.hash(pin, saltRounds);
 
     // 3. Transaction Atomique : Tenant Indépendant + User Livreur + SocialWallet
     await prisma.$transaction(async (tx) => {
@@ -53,7 +55,7 @@ export async function registerDriverAction(prevState: unknown, formData: FormDat
           tenantId: tenant.id,
           name: name.trim(),
           phone: cleanPhone,
-          pinCode: pinHash,
+          pinCode: pinHash, // ✅ Compatible avec loginAction
           role: "DRIVER",
         }
       });

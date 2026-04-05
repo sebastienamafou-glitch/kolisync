@@ -10,7 +10,8 @@ import {
 import Link from "next/link";
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/session";
-import { assignOrderAction } from "@/app/actions/delivery";
+// 🚨 CORRECTION : Import de la nouvelle fonction depuis marketplace
+import { claimOpportunityAction } from "@/app/actions/marketplace";
 
 export default async function OpportunityDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -107,12 +108,12 @@ export default async function OpportunityDetailPage({ params }: { params: Promis
       <footer className="p-6 bg-white border-t border-slate-100 sticky bottom-0 z-10">
         <form action={async () => { 
           "use server"; 
-          const result = await assignOrderAction(order.id); 
+          const result = await claimOpportunityAction(order.id); 
           
-          if (result.success) {
+          // 🚨 CORRECTION TYPESCRIPT : On utilise l'opérateur 'in' pour sécuriser le typage
+          if ("success" in result) {
             redirect("/pwa");
           } else {
-            // Optionnel: Gérer l'affichage de l'erreur (ex: Plafond de cash atteint)
             console.error(result.error);
           }
         }}>
