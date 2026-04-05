@@ -5,14 +5,59 @@ import {
   ShieldAlert, 
   ChevronLeft, 
   Zap,
-  ShieldCheck
+  ShieldCheck,
+  Wallet,
+  AlertTriangle,
+  ArrowRight
 } from "lucide-react";
 import Link from "next/link";
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/session";
-// 🚨 CORRECTION : Import de la nouvelle fonction depuis marketplace
 import { claimOpportunityAction } from "@/app/actions/marketplace";
 
+// ── COMPOSANT D'ALERTE LOCAL ─────────────────────────────────
+// Intégré ici pour respecter KISS, car il n'est utilisé que sur cette page.
+function DepositWarningCard({ currentBalance, requiredDeposit }: { currentBalance: number, requiredDeposit: number }) {
+  const missingAmount = requiredDeposit - currentBalance;
+  const formatFCFA = (amount: number) => new Intl.NumberFormat("fr-FR").format(amount) + " FCFA";
+
+  return (
+    <div className="bg-red-500/10 border border-red-500/20 p-5 rounded-[2rem] flex flex-col gap-5 w-full">
+      <div className="flex items-start gap-4">
+        <div className="bg-red-500/20 p-3 rounded-2xl text-red-400 shrink-0">
+          <AlertTriangle className="h-6 w-6" />
+        </div>
+        <div>
+          <h4 className="text-xs font-black text-red-400 uppercase tracking-widest mb-1.5">
+            Solde Insuffisant
+          </h4>
+          <p className="text-sm font-medium text-slate-300 leading-relaxed">
+            Il vous manque <strong className="text-white">{formatFCFA(missingAmount)}</strong> pour couvrir la caution.
+          </p>
+        </div>
+      </div>
+
+      <div className="flex items-center justify-between bg-slate-950/50 p-4 rounded-2xl border border-red-500/10">
+        <div className="flex items-center gap-2 text-slate-400 text-[10px] font-black uppercase tracking-widest">
+          <Wallet className="h-4 w-4" />
+          Solde Actuel
+        </div>
+        <div className="text-sm font-black text-white">
+          {formatFCFA(currentBalance)}
+        </div>
+      </div>
+
+      <Link 
+        href="/pwa/wallet" 
+        className="w-full py-4 bg-red-500/20 hover:bg-red-500/30 text-red-400 border border-red-500/30 font-black text-xs uppercase tracking-widest rounded-xl transition-all flex items-center justify-center gap-2 active:scale-95"
+      >
+        Recharger mon compte <ArrowRight className="h-4 w-4" />
+      </Link>
+    </div>
+  );
+}
+
+// ── PAGE PRINCIPALE ──────────────────────────────────────────
 export default async function OpportunityDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   
@@ -20,11 +65,22 @@ export default async function OpportunityDetailPage({ params }: { params: Promis
   
   if (!session || session.role !== "DRIVER") redirect("/");
 
-  const order = await prisma.order.findUnique({
-    where: { id: id, isPublic: true },
-  });
+  // 1. Requête parallèle optimisée : On récupère la commande ET le portefeuille en même temps
+  const [order, wallet] = await Promise.all([
+    prisma.order.findUnique({
+      where: { id: id, isPublic: true },
+    }),
+    prisma.socialWallet.findUnique({
+      where: { userId: session.userId }
+    })
+  ]);
 
   if (!order || order.driverId) redirect("/pwa");
+
+  // 2. Calcul des fonds disponibles
+  const requiredDeposit = order.depositAmount || 0;
+  const currentBalance = wallet?.balance || 0;
+  const hasEnoughFunds = currentBalance >= requiredDeposit;
 
   const formatFCFA = (amount: number) => 
     new Intl.NumberFormat("fr-FR").format(amount) + " FCFA";
@@ -59,7 +115,7 @@ export default async function OpportunityDetailPage({ params }: { params: Promis
           <div className="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100">
             <ShieldCheck className="h-6 w-6 text-blue-500 mb-2" />
             <p className="text-[10px] font-black uppercase text-slate-400">Caution exigée</p>
-            <p className="text-lg font-black text-slate-900">{formatFCFA(order.depositAmount || 0)}</p>
+            <p className="text-lg font-black text-slate-900">{formatFCFA(requiredDeposit)}</p>
           </div>
         </div>
 
@@ -92,9 +148,9 @@ export default async function OpportunityDetailPage({ params }: { params: Promis
             Engagement Financier
           </h3>
           <div className="text-xs text-slate-300 leading-relaxed font-medium">
-            {order.depositAmount && order.depositAmount > 0 ? (
+            {requiredDeposit > 0 ? (
               <p>
-                La caution exigée de <strong className="text-white">{formatFCFA(order.depositAmount)}</strong> sera temporairement gelée sur votre SocialWallet. Elle vous sera restituée dès la validation de la livraison ou le retour conforme du colis.
+                La caution exigée de <strong className="text-white">{formatFCFA(requiredDeposit)}</strong> sera temporairement gelée sur votre SocialWallet. Elle vous sera restituée dès la validation de la livraison ou le retour conforme du colis.
               </p>
             ) : (
               <p>
@@ -105,23 +161,30 @@ export default async function OpportunityDetailPage({ params }: { params: Promis
         </section>
       </main>
 
+      {/* ── AFFICHAGE CONDITIONNEL DU FOOTER ── */}
       <footer className="p-6 bg-white border-t border-slate-100 sticky bottom-0 z-10">
-        <form action={async () => { 
-          "use server"; 
-          const result = await claimOpportunityAction(order.id); 
-          
-          // 🚨 CORRECTION TYPESCRIPT : On utilise l'opérateur 'in' pour sécuriser le typage
-          if ("success" in result) {
-            redirect("/pwa");
-          } else {
-            console.error(result.error);
-          }
-        }}>
-          <button className="w-full py-5 rounded-3xl bg-slate-900 text-white font-black text-lg flex items-center justify-center gap-3 shadow-2xl shadow-slate-900/30 active:scale-95 transition-all">
-            <Zap className="h-6 w-6 text-emerald-400 fill-emerald-400" />
-            Saisir cette opportunité
-          </button>
-        </form>
+        {hasEnoughFunds ? (
+          <form action={async () => { 
+            "use server"; 
+            const result = await claimOpportunityAction(order.id); 
+            
+            if ("success" in result) {
+              redirect("/pwa");
+            } else {
+              console.error(result.error);
+            }
+          }}>
+            <button className="w-full py-5 rounded-3xl bg-slate-900 text-white font-black text-lg flex items-center justify-center gap-3 shadow-2xl shadow-slate-900/30 active:scale-95 transition-all">
+              <Zap className="h-6 w-6 text-emerald-400 fill-emerald-400" />
+              Saisir cette opportunité
+            </button>
+          </form>
+        ) : (
+          <DepositWarningCard 
+            currentBalance={currentBalance} 
+            requiredDeposit={requiredDeposit} 
+          />
+        )}
       </footer>
     </div>
   );

@@ -29,11 +29,11 @@ export default function DeliveryValidationForm({ orderId, amountDue }: DeliveryV
     startTransition(async () => {
       const result = await verifyDeliveryAction(orderId, pin);
       
-      if (result?.error) {
+      // ✅ CORRECTION TYPESCRIPT : On vérifie l'existence de la clé de manière sécurisée
+      if ("error" in result && result.error) {
         setErrorMsg(result.error);
       } else {
         setSuccess(true);
-        // Redirection vers le dashboard après 2 secondes pour laisser le temps de lire le message
         setTimeout(() => router.push("/pwa"), 2000);
       }
     });

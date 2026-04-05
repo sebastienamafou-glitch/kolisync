@@ -112,13 +112,21 @@ export default async function AdminKycPage() {
 
                   {/* Actions */}
                   <div className="mt-auto space-y-3">
-                    <form action={async () => { "use server"; await approveKycAction(user.id); }}>
-                      <button className="w-full py-3 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-bold text-xs uppercase tracking-widest hover:bg-emerald-500/20 transition-colors flex items-center justify-center gap-2">
+                    {/* BOUTON APPROUVER (Restauré) */}
+                    <form action={async () => { 
+                      "use server"; 
+                      await approveKycAction(user.id); 
+                    }}>
+                      <button className="w-full py-3 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center justify-center gap-2 hover:bg-emerald-500/20 transition-colors font-bold text-sm">
                         <CheckCircle2 className="h-4 w-4" /> Approuver
                       </button>
                     </form>
-                    
-                    <form action={rejectKycAction} className="flex gap-2">
+
+                    {/* BOUTON REFUSER */}
+                    <form action={async (formData) => { 
+                      "use server"; 
+                      await rejectKycAction(formData); 
+                    }} className="flex gap-2">
                       <input type="hidden" name="userId" value={user.id} />
                       <input 
                         type="text" 
@@ -127,7 +135,7 @@ export default async function AdminKycPage() {
                         placeholder="Raison du refus..." 
                         className="flex-1 bg-slate-950 border border-slate-800/50 rounded-xl px-3 text-[11px] text-white focus:outline-none focus:border-red-500/50"
                       />
-                      <button className="px-3 rounded-xl bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20 transition-colors flex items-center justify-center">
+                      <button className="px-3 rounded-xl bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20 transition-colors flex items-center justify-center shrink-0">
                         <XCircle className="h-4 w-4" />
                       </button>
                     </form>
