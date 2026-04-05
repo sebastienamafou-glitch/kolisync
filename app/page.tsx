@@ -531,7 +531,7 @@ export default function PublicHomePage() {
                    className="group flex items-center gap-2.5 transition-all">
                   
                   {/* LOGO WEBAPPCI AVEC EFFET DE SURVOL */}
-                  <div className="relative h-6 w-6 transition-all duration-300 ease-out group-hover:scale-110 group-hover:-rotate-6">
+                  <div className="relative h-10 w-10 transition-all duration-300 ease-out group-hover:scale-110 group-hover:-rotate-6">
                     {/* Halo lumineux qui apparaît au survol */}
                     <div className="absolute inset-0 bg-white/20 blur-md rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                     <Image src="/logo2.png" alt="Webappci Logo" fill className="object-contain relative z-10" />
