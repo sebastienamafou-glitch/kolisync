@@ -210,7 +210,6 @@ export default function PublicHomePage() {
                 priority
               />
             </div>
-            
             <span className="f-display text-xl font-bold tracking-tight text-white">
               KoliSync
             </span>
@@ -529,13 +528,19 @@ export default function PublicHomePage() {
                   Conçu &amp; développé par
                 </p>
                 <a href="https://www.webappci.com" target="_blank" rel="noopener noreferrer"
-                   className="group flex items-center gap-2 transition-all hover:opacity-80">
-                  <span className="f-display text-base font-bold text-white"
-                        style={{ transition: "background .2s" }}>
+                   className="group flex items-center gap-2.5 transition-all">
+                  
+                  {/* LOGO WEBAPPCI AVEC EFFET DE SURVOL */}
+                  <div className="relative h-6 w-6 transition-all duration-300 ease-out group-hover:scale-110 group-hover:-rotate-6">
+                    {/* Halo lumineux qui apparaît au survol */}
+                    <div className="absolute inset-0 bg-white/20 blur-md rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                    <Image src="/logo2.png" alt="Webappci Logo" fill className="object-contain relative z-10" />
+                  </div>
+
+                  <span className="f-display text-base font-bold text-white group-hover:text-gray-300 transition-colors duration-300">
                     webappci.com
-                    <Image src="/logo2.png" alt="WebappCi Logo" width={80} height={30} className="object-contain grayscale hover:grayscale-0 transition-all" />
                   </span>
-                  <span className="badge inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                  <span className="badge inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full group-hover:border-white/30 transition-colors duration-300">
                     <Globe2 className="h-2.5 w-2.5" /> Abidjan, CI
                   </span>
                 </a>
