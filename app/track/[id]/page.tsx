@@ -11,12 +11,11 @@ import {
 } from "lucide-react";
 import prisma from "@/lib/prisma";
 
-// On force la page à se re-rendre sur le serveur
 export const dynamic = "force-dynamic";
 
-export default async function TrackingPage({ params }: { params: { id: string } }) {
-  // Récupération de l'ID passé dans l'URL (ex: VEOVMX)
-  const trackingId = params.id;
+export default async function TrackingPage({ params }: { params: Promise<{ id: string }> }) {
+  const resolvedParams = await params;
+  const trackingId = resolvedParams.id;
 
   // 🚨 CORRECTION : On cherche la commande dont l'ID *se termine* par le trackingId (en minuscules)
   const order = await prisma.order.findFirst({
