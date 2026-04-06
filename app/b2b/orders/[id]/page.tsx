@@ -6,7 +6,8 @@ import {
   MapPin, 
   User, 
   Calendar, 
-  ShieldCheck
+  ShieldCheck,
+  Map // 🚨 NOUVEL IMPORT : L'icône de carte
 } from "lucide-react";
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/session";
@@ -28,7 +29,7 @@ export default async function B2BOrderDetailPage({
       tenantId: session.tenantId 
     },
     include: {
-      events: { // ✅ Corrigé : events au lieu de packageEvents
+      events: { 
         orderBy: { logicalTs: "desc" },
         include: { author: { select: { name: true } } }
       }
@@ -85,7 +86,7 @@ export default async function B2BOrderDetailPage({
                   <MapPin className="h-5 w-5 text-slate-400 mt-0.5" />
                   <div>
                     <p className="text-xs font-black text-slate-400 uppercase">Adresse de livraison</p>
-                    <p className="font-bold text-slate-900">{order.commune}, {order.deliveryAddress || "Non précisée"}</p> {/* ✅ Corrigé : deliveryAddress */}
+                    <p className="font-bold text-slate-900">{order.commune}, {order.deliveryAddress || "Non précisée"}</p>
                   </div>
                 </div>
               </div>
@@ -107,7 +108,7 @@ export default async function B2BOrderDetailPage({
                   <div>
                     <p className="text-xs font-black text-slate-400 uppercase">Montant à collecter</p>
                     <p className="text-xl font-black text-emerald-600">
-                      {new Intl.NumberFormat('fr-FR').format(order.amountDue)} FCFA {/* ✅ Corrigé : amountDue */}
+                      {new Intl.NumberFormat('fr-FR').format(order.amountDue)} FCFA
                     </p>
                   </div>
                 </div>
@@ -115,12 +116,47 @@ export default async function B2BOrderDetailPage({
             </div>
           </section>
 
+          {/* 🚨 CARTE DE SUIVI VISUELLE (B2B) 🚨 */}
+          <div className="relative h-64 w-full rounded-[2.5rem] overflow-hidden ring-1 ring-slate-200 bg-slate-100">
+            {order.commune ? (
+              <iframe
+                width="100%"
+                height="100%"
+                frameBorder="0"
+                scrolling="no"
+                marginHeight={0}
+                marginWidth={0}
+                src={`http://googleusercontent.com/maps.google.com/maps?q=${encodeURIComponent(order.commune + ", Côte d'Ivoire")}&t=&z=13&ie=UTF8&iwloc=&output=embed`}
+                className="absolute inset-0 z-0 grayscale-[20%] opacity-90"
+              />
+            ) : (
+              <div className="absolute inset-0 flex items-center justify-center">
+                <Map className="h-10 w-10 text-slate-300" />
+              </div>
+            )}
+
+            {/* Voile d'ombre intérieur pour un effet premium */}
+            <div className="absolute inset-0 z-10 pointer-events-none shadow-[inset_0_0_40px_rgba(0,0,0,0.05)]" />
+
+            {/* Bulle d'information Vendeur */}
+            <div className="absolute bottom-4 left-4 z-20 flex items-center gap-3 bg-white/95 backdrop-blur-md px-4 py-3 rounded-2xl shadow-lg ring-1 ring-slate-900/5">
+              <div className={`h-3 w-3 rounded-full ${
+                ["IN_TRANSIT", "DISPATCHED"].includes(order.packageStatus) 
+                  ? 'bg-blue-500 animate-pulse' 
+                  : 'bg-emerald-500'
+              }`} />
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Zone de destination</p>
+                <p className="text-sm font-bold text-slate-900">{order.commune || "Non précisée"}</p>
+              </div>
+            </div>
+          </div>
+
           {/* ── LA TIMELINE GPS ── */}
           <section className="rounded-[2.5rem] bg-white p-8 shadow-sm ring-1 ring-slate-200">
             <h2 className="text-sm font-black uppercase tracking-widest text-slate-400 mb-8 flex items-center gap-2">
               <MapPin className="h-4 w-4" /> Historique de traçabilité
             </h2>
-            {/* Adaptation des données schema vers les props du composant */}
             <OrderTimeline events={order.events.map(e => ({
               ...e,
               status: e.toStatus 
@@ -134,7 +170,7 @@ export default async function B2BOrderDetailPage({
             <div className="absolute -right-10 -top-10 h-32 w-32 rounded-full bg-blue-500/20 blur-2xl" />
             
             <h3 className="relative z-10 text-xs font-black uppercase tracking-widest text-slate-400 mb-4">Statut Actuel</h3>
-            <p className="relative z-10 text-2xl font-black mb-6">{order.packageStatus}</p> {/* ✅ Corrigé : packageStatus */}
+            <p className="relative z-10 text-2xl font-black mb-6">{order.packageStatus}</p>
             
             <div className="relative z-10 p-4 rounded-2xl bg-white/5 border border-white/10 space-y-3">
               <div className="flex justify-between text-xs">
