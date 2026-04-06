@@ -90,7 +90,10 @@ export default async function PWADashboardPage() {
       </header>
 
       {/* ── WIDGET PROTECTION SOCIALE (Premium Card) ── */}
-      <section className="relative overflow-hidden rounded-[2rem] bg-slate-900 p-6 text-white shadow-xl">
+      <Link 
+        href="/pwa/wallet" 
+        className="block relative overflow-hidden rounded-[2rem] bg-slate-900 p-6 text-white shadow-xl transition-transform active:scale-[0.98] hover:shadow-2xl cursor-pointer"
+      >
         <div className="absolute -right-10 -top-10 h-40 w-40 rounded-full bg-emerald-500/10 blur-2xl" />
         <div className="absolute -left-10 -bottom-10 h-40 w-40 rounded-full bg-blue-500/10 blur-2xl" />
         
@@ -107,14 +110,11 @@ export default async function PWADashboardPage() {
               Fonds de garantie
             </p>
           </div>
-          <Link 
-            href="/pwa/wallet" 
-            className="flex h-12 w-12 items-center justify-center rounded-[1.25rem] bg-white/10 text-white backdrop-blur-md transition-all active:scale-90 hover:bg-white/20 ring-1 ring-white/20"
-          >
+          <div className="flex h-12 w-12 items-center justify-center rounded-[1.25rem] bg-white/10 text-white backdrop-blur-md ring-1 ring-white/20">
             <ChevronRight className="h-6 w-6" />
-          </Link>
+          </div>
         </div>
-      </section>
+      </Link>
 
       {/* ── LE RADAR D'OPPORTUNITÉS (Bourse Publique) ── */}
       <section className="space-y-4">

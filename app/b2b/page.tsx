@@ -58,6 +58,9 @@ export default async function B2BDashboardPage({
   const session = await getSession();
   if (!session || session.role !== "OWNER") redirect("/");
 
+  // 🚨 Variable d'environnement pour le Tracking Link (DRY)
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://kolisync.vercel.app";
+
   const tenantId = session.tenantId;
   const now = new Date();
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -177,7 +180,6 @@ export default async function B2BDashboardPage({
 
         {/* ── KPI GRID ── */}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 a2">
-          {/* ... (KPI Cards inchangées pour rester concis) ... */}
           <div className="card-pro rounded-[2rem] bg-white p-6 shadow-sm ring-1 ring-slate-100">
             <div className="mb-4 flex items-center justify-between">
               <div className="rounded-xl bg-blue-50 p-2.5 text-blue-600"><Package className="h-5 w-5" /></div>
@@ -227,7 +229,6 @@ export default async function B2BDashboardPage({
           {/* COLONNE GAUCHE : FLUX & OPÉRATIONS (2/3) */}
           <div className="xl:col-span-2 space-y-6">
             
-            {/* ... (Barre de répartition CRDT inchangée) ... */}
             <div className="rounded-[2rem] bg-white p-6 shadow-sm ring-1 ring-slate-200">
               <div className="flex items-center gap-2 mb-5">
                 <BarChart3 className="h-4 w-4 text-slate-400" />
@@ -308,9 +309,22 @@ export default async function B2BDashboardPage({
                   <div className="space-y-2">
                     {filteredOrders.map(order => {
                       const isActive = !["DELIVERED_VERIFIED", "DELIVERED_UNSECURED", "FAILED_RETURNED"].includes(order.packageStatus);
-                      const waLink = `https://wa.me/${order.customerPhone?.replace(/\D/g, '')}?text=Bonjour%20${encodeURIComponent(order.customerName)}%2C%20votre%20code%20KoliSync%20est%20%3A%20${order.securityPin}`;
                       
-                      // 🚨 Radar KoliSync : Récupération du statut exact pour cette commande
+                      // 🚨 GÉNÉRATION DU SMART MESSAGE WHATSAPP
+                      const trackingId = order.id.slice(-6).toUpperCase();
+                      const trackingLink = `${appUrl}/track/${trackingId}`;
+                      const whatsappMessage = 
+                        `📦 *KoliSync* - Bonjour ${order.customerName},\n\n` +
+                        `Votre colis est prêt et vous a été assigné !\n\n` +
+                        `📍 Suivez son avancée en temps réel ici :\n${trackingLink}\n\n` +
+                        `🔐 *VOTRE CODE PIN : ${order.securityPin}*\n` +
+                        `(Ne le donnez au livreur qu'au moment d'avoir le colis en main).\n\n` +
+                        `Merci pour votre confiance !`;
+                      
+                      const cleanPhone = order.customerPhone?.replace(/\D/g, '') || '';
+                      const waLink = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(whatsappMessage)}`;
+                      
+                      // Radar KoliSync
                       const riskCount = riskMap.get(order.customerPhone);
                       const isDanger = riskCount && riskCount >= 3;
                       const isWarning = riskCount && riskCount === 2;
@@ -326,7 +340,6 @@ export default async function B2BDashboardPage({
                               <div className="flex items-center flex-wrap gap-2">
                                 <p className="font-bold text-slate-900 text-sm">{order.customerName}</p>
                                 
-                                {/* BADGES RADAR DE RISQUE */}
                                 {isDanger && (
                                   <span className="flex items-center gap-1 rounded bg-red-100 px-1.5 py-0.5 text-[8px] font-black uppercase text-red-700 ring-1 ring-red-200" title={`Fraudeur potentiel : ${riskCount} signalements`}>
                                     <ShieldAlert className="h-2.5 w-2.5" /> Haut Risque
@@ -368,7 +381,7 @@ export default async function B2BDashboardPage({
                                     </div>
                                   </div>
                                 </div>
-                                <a href={waLink} target="_blank" rel="noopener noreferrer" className="flex h-8 w-8 items-center justify-center rounded-md bg-emerald-500 text-white hover:bg-emerald-400 shadow-sm transition-colors">
+                                <a href={waLink} target="_blank" rel="noopener noreferrer" className="flex h-8 w-8 items-center justify-center rounded-md bg-emerald-500 text-white hover:bg-emerald-400 shadow-sm transition-colors" title="Envoyer le code et le lien au client par WhatsApp">
                                   <MessageCircle className="h-3.5 w-3.5" />
                                 </a>
                               </div>
@@ -405,7 +418,6 @@ export default async function B2BDashboardPage({
           {/* COLONNE DROITE : FINANCES & SÉCURITÉ (1/3) */}
           <div className="space-y-6">
             
-            {/* ... (Box Réconciliation et Protocole inchangés) ... */}
             <div className="rounded-[2.5rem] bg-slate-900 p-6 shadow-xl relative overflow-hidden border border-slate-800">
               <div className="absolute top-0 right-0 h-32 w-32 bg-emerald-500/10 rounded-full blur-2xl -mr-10 -mt-10" />
               
@@ -443,7 +455,6 @@ export default async function B2BDashboardPage({
               )}
             </div>
 
-            {/* Protocole de sécurité */}
             <div className="p-6 rounded-[2rem] bg-white shadow-sm ring-1 ring-slate-200">
               <div className="flex items-center gap-3 mb-3">
                 <div className="h-8 w-8 rounded-lg bg-amber-50 flex items-center justify-center shrink-0">

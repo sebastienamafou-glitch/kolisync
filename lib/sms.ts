@@ -13,8 +13,19 @@ export async function sendDeliveryPinSMS(
 ) {
   const providerUrl = process.env.SMS_PROVIDER_URL;
   const providerKey = process.env.SMS_PROVIDER_KEY;
+  
+  // URL de base (ex: https://kolisync.com en production)
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+  const trackingLink = `${appUrl}/track/${trackingId}`;
 
-  const messageText = `Bonjour ${customerName}, votre colis KoliSync #${trackingId} est en route. Votre code secret de livraison (PIN) est le : ${pin}. Ne le donnez au livreur qu'à la réception.`;
+  // Formatage optimisé pour WhatsApp (avec du gras *) et SMS
+  const messageText = 
+    `📦 *KoliSync* - Bonjour ${customerName},\n\n` +
+    `Votre colis est prêt et vous a été assigné !\n\n` +
+    `📍 Suivez son avancée en temps réel ici :\n${trackingLink}\n\n` +
+    `🔐 *VOTRE CODE PIN : ${pin}*\n` +
+    `(Ne le donnez au livreur qu'au moment d'avoir le colis en main).\n\n` +
+    `Merci pour votre confiance !`;
 
   try {
     // ── 1. MODE PRODUCTION (Appel API Réel) ──
@@ -38,7 +49,7 @@ export async function sendDeliveryPinSMS(
         throw new Error(`Erreur API SMS : ${response.status} ${response.statusText}`);
       }
 
-      console.log(`[SMS ENVOYÉ EN PRODUCTION] Vers : ${phone}`);
+      console.log(`[SMS/WHATSAPP ENVOYÉ EN PRODUCTION] Vers : ${phone}`);
       return { success: true };
     }
 
@@ -47,9 +58,9 @@ export async function sendDeliveryPinSMS(
     await new Promise((resolve) => setTimeout(resolve, 500));
 
     console.log("\n==========================================");
-    console.log("📱 [MOCK SMS LOCAL]");
+    console.log("📱 [MOCK SMS / WHATSAPP LOCAL]");
     console.log(`DESTINATAIRE : ${phone}`);
-    console.log(`MESSAGE      : ${messageText}`);
+    console.log(`MESSAGE      :\n${messageText}`);
     console.log("==========================================\n");
 
     return { success: true };
@@ -60,7 +71,8 @@ export async function sendDeliveryPinSMS(
     return { success: false, error: "Échec de l'envoi du SMS" };
   }
 }
-// 🚨 CORRECTION : Ajout du Stub générique utilisé par le module KYC (Admin)
+
+// 🚨 Stub générique utilisé par le module KYC (Admin)
 export async function sendSMS(phone: string, message: string) {
   console.log("\n==========================================");
   console.log("📱 [MOCK SMS GÉNÉRIQUE (KYC)]");
