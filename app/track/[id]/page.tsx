@@ -1,4 +1,3 @@
-import { notFound } from "next/navigation";
 import { 
   Package, 
   Truck, 
@@ -8,19 +7,24 @@ import {
   ShieldCheck,
   AlertTriangle,
   RefreshCw,
-  Phone
+  SearchX
 } from "lucide-react";
 import prisma from "@/lib/prisma";
 
-// On force la page à se re-rendre sur le serveur plutôt que d'utiliser le cache statique
+// On force la page à se re-rendre sur le serveur
 export const dynamic = "force-dynamic";
 
-export default async function TrackingPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
+export default async function TrackingPage({ params }: { params: { id: string } }) {
+  // Récupération de l'ID passé dans l'URL (ex: VEOVMX)
+  const trackingId = params.id;
 
-  // Récupération de la commande avec sélection ultra-stricte (Privacy)
-  const order = await prisma.order.findUnique({
-    where: { id: id },
+  // 🚨 CORRECTION : On cherche la commande dont l'ID *se termine* par le trackingId (en minuscules)
+  const order = await prisma.order.findFirst({
+    where: { 
+      id: {
+        endsWith: trackingId.toLowerCase()
+      }
+    },
     select: {
       id: true,
       customerName: true,
@@ -33,7 +37,22 @@ export default async function TrackingPage({ params }: { params: Promise<{ id: s
     }
   });
 
-  if (!order) notFound();
+  // 🚨 CORRECTION UX : Au lieu de faire crasher la page, on affiche un message propre
+  if (!order) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6 font-sans">
+        <div className="bg-white p-8 rounded-[2rem] shadow-xl text-center max-w-sm w-full ring-1 ring-slate-100">
+          <div className="mx-auto h-16 w-16 bg-slate-50 rounded-full flex items-center justify-center mb-4">
+            <SearchX className="h-8 w-8 text-slate-400" />
+          </div>
+          <h1 className="text-xl font-black text-slate-900 mb-2">Colis introuvable</h1>
+          <p className="text-sm text-slate-500 font-medium leading-relaxed">
+            Le numéro de suivi <strong className="text-slate-900">{trackingId}</strong> n'existe pas ou est erroné.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   const formatFCFA = (amount: number) => 
     new Intl.NumberFormat("fr-FR").format(amount) + " FCFA";
@@ -49,11 +68,7 @@ export default async function TrackingPage({ params }: { params: Promise<{ id: s
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col items-center p-4 font-sans">
-      {/* 🚀 KISS REAL-TIME : La page se rafraîchit toute seule toutes les 30 secondes */}
-      {!isDelivered && !isFailed && (
-        <meta httpEquiv="refresh" content="30" />
-      )}
-
+      
       <div className="w-full max-w-md bg-white rounded-[2rem] shadow-xl shadow-slate-200/50 overflow-hidden border border-slate-100 mt-4 sm:mt-10 relative">
         
         {/* Header Marque */}
@@ -127,7 +142,7 @@ export default async function TrackingPage({ params }: { params: Promise<{ id: s
 
           <hr className="border-slate-100" />
 
-          {/* Informations Financières (Pour que le client prépare l'argent) */}
+          {/* Informations Financières */}
           <div className="bg-slate-50 p-5 rounded-2xl border border-slate-100 flex items-center justify-between">
             <div>
               <p className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-1.5 mb-1">
@@ -140,7 +155,7 @@ export default async function TrackingPage({ params }: { params: Promise<{ id: s
 
           {!isDelivered && !isFailed && (
              <p className="text-[10px] font-medium text-slate-400 text-center flex items-center justify-center gap-1.5">
-               <RefreshCw className="h-3 w-3 animate-spin-slow" /> Mise à jour automatique en temps réel
+               <RefreshCw className="h-3 w-3 animate-spin-slow" /> Rafraîchissez la page pour suivre l'évolution
              </p>
           )}
 
