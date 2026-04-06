@@ -60,3 +60,13 @@ export async function sendDeliveryPinSMS(
     return { success: false, error: "Échec de l'envoi du SMS" };
   }
 }
+// 🚨 CORRECTION : Ajout du Stub générique utilisé par le module KYC (Admin)
+export async function sendSMS(phone: string, message: string) {
+  console.log("\n==========================================");
+  console.log("📱 [MOCK SMS GÉNÉRIQUE (KYC)]");
+  console.log(`DESTINATAIRE : ${phone}`);
+  console.log(`MESSAGE      : ${message}`);
+  console.log("==========================================\n");
+  
+  return { success: true };
+}

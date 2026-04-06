@@ -3,8 +3,7 @@
 import { useState, useTransition } from "react";
 import { MapPin, Banknote, Package, Loader2, AlertCircle } from "lucide-react";
 
-// 🚨 C'est ici que ça changeait ! On importe depuis "delivery" et plus depuis "orders"
-import { assignOrderAction } from "@/app/actions/delivery";
+import { claimPublicOrderAction } from "@/app/actions/delivery";
 
 interface OrderRadarProps {
   order: {
@@ -24,12 +23,12 @@ export default function OrderRadarCard({ order }: OrderRadarProps) {
   const handleAccept = () => {
     setErrorMsg(null);
     startTransition(async () => {
-      const result = await assignOrderAction(order.id);
+      // 🚨 CORRECTION : Appel de la fonction avec le bon paramètre unique
+      const result = await claimPublicOrderAction(order.id);
+      
       if (result?.error) {
         setErrorMsg(result.error);
       }
-      // En cas de succès, le revalidatePath dans l'action va automatiquement
-      // faire disparaître cette carte de la liste.
     });
   };
 

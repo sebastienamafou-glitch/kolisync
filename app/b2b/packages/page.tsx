@@ -20,6 +20,7 @@ import {
   Store
 } from "lucide-react";
 import { checkCustomerRiskAction } from "@/app/actions/risk";
+import { createPackageAction } from "@/app/actions/packages";
 
 const COMMUNES = [
   "Plateau", "Cocody", "Abobo", "Adjamé", "Attécoubé", 
@@ -51,17 +52,34 @@ function SubmitButton() {
   );
 }
 
+// 🚨 CORRECTION : Interface stricte pour éviter le type "never"
+interface FormState {
+  error?: string;
+  message?: string;
+  success?: boolean;
+}
+
 export default function NewPackagePage() {
-  const [state, formAction] = useActionState(createPackageAction, null);
+  // 🚨 CORRECTION : L'état initial matche parfaitement la signature de la Server Action
+  const initialState = { error: "", message: "" };
+  const [state, formAction] = useActionState(createPackageAction, initialState);
+  
   const [phone, setPhone] = useState("");
   const [risk, setRisk] = useState<{ isHighRisk: boolean; reportCount: number } | null>(null);
 
   useEffect(() => {
     const checkRisk = async () => {
       if (phone.replace(/\s/g, "").length >= 8) {
+        // 🚨 CORRECTION : Vérification stricte TypeScript sans utiliser "any"
         const result = await checkCustomerRiskAction(phone);
-        if (result && "isHighRisk" in result) {
-          setRisk(result);
+        
+        if (result && "status" in result && (result.status === "DANGER" || result.status === "WARNING")) {
+          setRisk({ 
+            isHighRisk: true, 
+            reportCount: "reportCount" in result ? Number(result.reportCount) : 1 
+          });
+        } else {
+          setRisk(null);
         }
       } else {
         setRisk(null);
@@ -124,7 +142,7 @@ export default function NewPackagePage() {
             </div>
           ) : null}
 
-          {/* 🚨 NOUVEAU : Adresse de Retrait */}
+          {/* Adresse de Retrait */}
           <div className="rounded-2xl border border-blue-100 bg-blue-50/30 p-4 mb-6">
             <label htmlFor="pickupAddress" className="block text-sm font-semibold text-blue-900">
               Adresse de retrait (Boutique / Entrepôt)
