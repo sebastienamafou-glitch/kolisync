@@ -80,7 +80,7 @@ model User {
   
   socialWallet      SocialWallet?
   disputes          Dispute[]      @relation("DriverDisputes")
-  
+  pushSubscriptions  PushSubscription[] 
   // --- MODULE KYC : Identité ---
   kycStatus         KycStatus      @default(UNVERIFIED)
   idDocumentUrl     String?        // CNI / Passeport
@@ -203,4 +203,15 @@ model Dispute {
 
   order  Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
   driver User  @relation("DriverDisputes", fields: [driverId], references: [id])
+}
+
+model PushSubscription {
+  id        String   @id @default(cuid())
+  userId    String
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }

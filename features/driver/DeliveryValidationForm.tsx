@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { verifyDeliveryAction } from "@/app/actions/delivery";
-import { CheckCircle2, ShieldAlert, Loader2, Lock } from "lucide-react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { verifyDeliveryAction } from "@/app/actions/delivery";
+import { useOfflineDelivery } from "@/hooks/useOfflineDelivery";
+import { CheckCircle2, ShieldAlert, Loader2, Lock, WifiOff } from "lucide-react";
 
 interface DeliveryValidationFormProps {
   orderId: string;
@@ -13,12 +14,18 @@ interface DeliveryValidationFormProps {
 export default function DeliveryValidationForm({ orderId, amountDue }: DeliveryValidationFormProps) {
   const [pin, setPin] = useState("");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  
+  // Nouveaux états de succès pour l'UX Optimiste
   const [success, setSuccess] = useState(false);
-  const [isPending, startTransition] = useTransition();
+  const [isOfflineSuccess, setIsOfflineSuccess] = useState(false);
+  
   const router = useRouter();
 
-  const handleVerify = (e: React.FormEvent) => {
-    e.preventDefault(); // Empêche le rechargement de la page
+  // 🚨 KOLISYNC OFFLINE ENGINE : Branchement de notre hook PWA
+  const { executeDelivery, isProcessing, isOfflineMode } = useOfflineDelivery(verifyDeliveryAction);
+
+  const handleVerify = async (e: React.FormEvent) => {
+    e.preventDefault();
     setErrorMsg(null);
     
     if (pin.length < 4) {
@@ -26,34 +33,58 @@ export default function DeliveryValidationForm({ orderId, amountDue }: DeliveryV
       return;
     }
 
-    startTransition(async () => {
-      const result = await verifyDeliveryAction(orderId, pin);
-      
-      // ✅ CORRECTION TYPESCRIPT : On vérifie l'existence de la clé de manière sécurisée
-      if ("error" in result && result.error) {
-        setErrorMsg(result.error);
-      } else {
-        setSuccess(true);
-        setTimeout(() => router.push("/pwa"), 2000);
+    // On délègue l'exécution au hook (qui gère le routage Online/Offline automatiquement)
+    const result = await executeDelivery(orderId, pin);
+    
+    if (result?.error) {
+      setErrorMsg(result.error);
+    } else if (result?.success) {
+      setSuccess(true);
+      // Si la validation a été faite hors-ligne, on adapte l'UI
+      if (result.isOffline) {
+        setIsOfflineSuccess(true);
       }
-    });
+      // Redirection après 2.5 secondes pour laisser le temps de lire le message
+      setTimeout(() => router.push("/pwa"), 2500);
+    }
   };
 
+  // ── ÉCRAN DE SUCCÈS (Adapté selon l'état du réseau) ──
   if (success) {
     return (
-      <div className="p-6 bg-emerald-50 rounded-3xl border border-emerald-100 flex flex-col items-center justify-center text-center animate-in fade-in zoom-in duration-300">
-        <CheckCircle2 className="h-12 w-12 text-emerald-500 mb-3" />
-        <h3 className="text-lg font-black text-emerald-900">Livraison Validée !</h3>
-        <p className="text-sm text-emerald-700 font-medium mt-1">
-          La caution a été débloquée et votre prime sociale est créditée.
+      <div className={`p-6 rounded-3xl border flex flex-col items-center justify-center text-center animate-in fade-in zoom-in duration-300 ${
+        isOfflineSuccess ? "bg-amber-50 border-amber-100" : "bg-emerald-50 border-emerald-100"
+      }`}>
+        {isOfflineSuccess ? (
+          <WifiOff className="h-12 w-12 text-amber-500 mb-3" />
+        ) : (
+          <CheckCircle2 className="h-12 w-12 text-emerald-500 mb-3" />
+        )}
+        
+        <h3 className={`text-lg font-black ${isOfflineSuccess ? "text-amber-900" : "text-emerald-900"}`}>
+          {isOfflineSuccess ? "Validé en local !" : "Livraison Validée !"}
+        </h3>
+        <p className={`text-sm font-medium mt-1 leading-relaxed ${isOfflineSuccess ? "text-amber-700" : "text-emerald-700"}`}>
+          {isOfflineSuccess 
+            ? "Réseau faible. La livraison est sauvegardée et sera synchronisée dès le retour de la connexion." 
+            : "La caution a été débloquée et votre prime sociale est créditée."}
         </p>
       </div>
     );
   }
 
+  // ── FORMULAIRE PRINCIPAL ──
   return (
-    <div className="p-6 bg-white rounded-3xl border border-slate-100 shadow-sm space-y-4">
-      <div className="flex items-start gap-3">
+    <div className="p-6 bg-white rounded-3xl border border-slate-100 shadow-sm space-y-4 relative overflow-hidden">
+      
+      {/* 🚨 Bannière d'alerte réseau */}
+      {isOfflineMode && (
+        <div className="absolute top-0 left-0 w-full bg-amber-100 text-amber-800 text-[10px] font-black uppercase tracking-widest text-center py-1 flex items-center justify-center gap-1.5 animate-in slide-in-from-top-2">
+          <WifiOff className="h-3 w-3" /> Mode Hors-ligne actif
+        </div>
+      )}
+
+      <div className={`flex items-start gap-3 ${isOfflineMode ? "pt-4" : ""}`}>
         <div className="p-2 bg-blue-50 rounded-xl">
           <Lock className="h-5 w-5 text-blue-600" />
         </div>
@@ -81,18 +112,24 @@ export default function DeliveryValidationForm({ orderId, amountDue }: DeliveryV
           maxLength={6}
           placeholder="Ex: 1234"
           value={pin}
-          onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))} // N'accepte que les chiffres
-          disabled={isPending}
+          onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))}
+          disabled={isProcessing}
           className="w-full text-center text-2xl tracking-[0.5em] font-black p-4 bg-slate-50 border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-slate-900 focus:bg-white transition-all disabled:opacity-50"
         />
 
         <button
           type="submit"
-          disabled={isPending || pin.length < 4}
-          className="w-full h-14 bg-slate-900 text-white rounded-2xl font-black flex items-center justify-center gap-2 active:scale-95 transition-all disabled:opacity-50 disabled:active:scale-100"
+          disabled={isProcessing || pin.length < 4}
+          className={`w-full h-14 rounded-2xl font-black flex items-center justify-center gap-2 active:scale-95 transition-all disabled:opacity-50 disabled:active:scale-100 ${
+            isOfflineMode 
+              ? "bg-amber-500 hover:bg-amber-400 text-slate-900" 
+              : "bg-slate-900 hover:bg-slate-800 text-white"
+          }`}
         >
-          {isPending ? (
+          {isProcessing ? (
             <Loader2 className="h-5 w-5 animate-spin" />
+          ) : isOfflineMode ? (
+            <>Valider hors-ligne <WifiOff className="h-4 w-4 opacity-50" /></>
           ) : (
             "Valider la livraison"
           )}

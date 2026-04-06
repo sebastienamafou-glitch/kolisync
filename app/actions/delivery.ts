@@ -201,9 +201,18 @@ export async function verifyDeliveryAction(orderId: string, providedPin: string)
       if (order.cashStatus !== "UNCOLLECTED") throw new Error("Incohérence du statut financier.");
       
       const expectedPin = order.securityPin || "0000";
+
+
+      if (["DELIVERED_VERIFIED", "DELIVERED_UNSECURED"].includes(order.packageStatus)) {
+  
+        return { success: true };
+      }
+
+      if (order.packageStatus !== "IN_TRANSIT") throw new Error("Statut de livraison invalide.");
+      if (order.cashStatus !== "UNCOLLECTED") throw new Error("Incohérence du statut financier.");
       if (providedPin !== expectedPin) throw new Error("Code de sécurité incorrect.");
 
-      await tx.order.update({
+      await tx.order.update({ 
         where: { id: orderId },
         data: { packageStatus: "DELIVERED_VERIFIED", cashStatus: "HELD_BY_DRIVER" },
       });
