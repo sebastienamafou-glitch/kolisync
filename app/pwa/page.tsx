@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/session";
+import PushNotificationToggle from "@/features/driver/PushNotificationToggle";
 
 // Import du composant Radar (Server Component)
 import AvailableOrdersList from "@/features/driver/AvailableOrdersList";
@@ -88,6 +89,9 @@ export default async function PWADashboardPage() {
             <Package className="h-7 w-7" />
         </div>
       </header>
+
+      {/* 🚨 KOLISYNC PUSH BANNER : S'affiche uniquement si non abonné */}
+      <PushNotificationToggle />
 
       {/* ── WIDGET PROTECTION SOCIALE (Premium Card) ── */}
       <Link 

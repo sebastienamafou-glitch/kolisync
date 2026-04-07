@@ -56,3 +56,51 @@ async function processOfflineDeliveries() {
     throw error; 
   }
 }
+
+self.addEventListener('push', (event) => {
+  if (!event.data) return;
+
+  try {
+    const data = event.data.json();
+    
+    const options = {
+      body: data.body || "Nouvelle mise à jour KoliSync",
+      icon: '/icons/icon-192x192.png', // Assure-toi d'avoir cette icône
+      badge: '/icons/badge-72x72.png', // Icône monochrome pour la barre de statut (Android)
+      vibrate: [200, 100, 200, 100, 200, 100, 200], // Vibration agressive "Uber-style"
+      data: {
+        url: data.url || '/pwa'
+      },
+      requireInteraction: true // La notification reste à l'écran jusqu'à action du livreur
+    };
+
+    event.waitUntil(
+      self.registration.showNotification(data.title || "KoliSync", options)
+    );
+  } catch (error) {
+    console.error('Erreur lors du parsing du Push:', error);
+  }
+});
+
+// Action quand le livreur clique sur la notification
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  
+  const targetUrl = event.notification.data.url;
+
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
+      // Si l'app est déjà ouverte en arrière-plan, on la focus et on navigue
+      for (let i = 0; i < windowClients.length; i++) {
+        const client = windowClients[i];
+        if (client.url.includes(targetUrl) && 'focus' in client) {
+          return client.focus();
+        }
+      }
+      // Sinon, on ouvre une nouvelle fenêtre
+      if (clients.openWindow) {
+        return clients.openWindow(targetUrl);
+      }
+    })
+  );
+});

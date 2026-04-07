@@ -4,6 +4,8 @@ import { revalidatePath } from "next/cache";
 import prisma from "@/lib/prisma";
 import prismaAdmin from "@/lib/prisma-admin";
 import { getSession } from "@/lib/session";
+// 🚨 NOUVEL IMPORT : Le système Web Push
+import { sendPushToUser } from "@/lib/push-sender";
 
 // ── UTILITAIRES INTERNES ───────────────────────────────────
 
@@ -33,7 +35,6 @@ async function checkSmartCashLimit(driverId: string) {
 
 // ── ASSIGNATION DEPUIS LE RADAR PUBLIC ─────────────────
 
-// 🚨 CORRECTION : Renommé de assignOrderAction à claimPublicOrderAction
 export async function claimPublicOrderAction(orderId: string) {
   const session = await getSession();
   if (!session || !session.userId || session.role !== "DRIVER") {
@@ -70,6 +71,13 @@ export async function claimPublicOrderAction(orderId: string) {
           reason: "Opportunité remportée sur la Bourse Globale",
         },
       });
+    });
+
+    // 🚨 DÉCLENCHEUR PUSH (Auto-notification pour confirmer au livreur)
+    await sendPushToUser(session.userId, {
+      title: "✅ Course remportée !",
+      body: "La course est à vous. Dirigez-vous vers la boutique pour la récupération.",
+      url: `/pwa/packages/${orderId}`
     });
 
     revalidatePath("/pwa");
@@ -120,6 +128,13 @@ export async function acceptDeliveryAction(orderId: string) {
           reason: "Invitation privée acceptée",
         }
       });
+    });
+
+    // 🚨 DÉCLENCHEUR PUSH
+    await sendPushToUser(session.userId, {
+      title: "🤝 Invitation acceptée",
+      body: "Le colis est maintenant en transit vers le client.",
+      url: `/pwa/packages/${orderId}`
     });
 
     revalidatePath("/pwa");
@@ -197,19 +212,16 @@ export async function verifyDeliveryAction(orderId: string, providedPin: string)
       });
 
       if (!order || order.driverId !== session.userId) throw new Error("Colis introuvable.");
-      if (order.packageStatus !== "IN_TRANSIT") throw new Error("Statut de livraison invalide.");
-      if (order.cashStatus !== "UNCOLLECTED") throw new Error("Incohérence du statut financier.");
       
-      const expectedPin = order.securityPin || "0000";
-
-
+      // 🚨 CORRECTION : Les doublons inutiles ont été purgés ici (Idempotence Clean Code)
       if (["DELIVERED_VERIFIED", "DELIVERED_UNSECURED"].includes(order.packageStatus)) {
-  
         return { success: true };
       }
 
       if (order.packageStatus !== "IN_TRANSIT") throw new Error("Statut de livraison invalide.");
       if (order.cashStatus !== "UNCOLLECTED") throw new Error("Incohérence du statut financier.");
+      
+      const expectedPin = order.securityPin || "0000";
       if (providedPin !== expectedPin) throw new Error("Code de sécurité incorrect.");
 
       await tx.order.update({ 
