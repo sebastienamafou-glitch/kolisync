@@ -7,19 +7,16 @@ Sentry.init({
   // les traces de performance (vitesse de chargement) à 10%.
   tracesSampleRate: 0.1,
 
-  // Fonctionnalité "Replay" : Enregistre l'écran de l'utilisateur.
-  // On ne le déclenche à 100% QUE si une erreur survient (KISS & Économie).
+  // 🚨 CORRECTION : On désactive totalement les fonctionnalités Session Replay 
+  // qui font crasher l'hydratation React en Navigation Privée stricte.
+  /*
   replaysOnErrorSampleRate: 1.0,
-  
-  // On capture 1% des sessions normales pour auditer l'UX occasionnellement.
   replaysSessionSampleRate: 0.01,
-
   integrations: [
     Sentry.replayIntegration({
-      // RGPD / Confidentialité : Sentry va masquer tout le texte et les images 
-      // de la PWA (noms des clients, montants, photos KYC) sur les vidéos.
       maskAllText: true,
       blockAllMedia: true,
     }),
   ],
+  */
 });

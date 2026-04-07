@@ -21,8 +21,11 @@ async function main() {
 
   console.log('⏳ Création de l\'architecture Multi-Tenant...');
   const hqTenant = await prisma.tenant.create({ data: { name: 'KoliSync HQ', isPro: true } });
-  const tenantA = await prisma.tenant.create({ data: { name: 'Boutique Alpha (Principal)' } });
-  const tenantB = await prisma.tenant.create({ data: { name: 'Boutique Beta (Externe)' } });
+  const tenantA = await prisma.tenant.create({ data: { name: 'Boutique Alpha (Principal)', isPro: false } });
+  const tenantB = await prisma.tenant.create({ data: { name: 'Boutique Beta (Externe)', isPro: false } });
+  
+  // 🚨 AJOUT POUR LE TEST QUOTA
+  const tenantC = await prisma.tenant.create({ data: { name: 'Boutique Gamma (Test Quota)', isPro: false } });
 
   console.log('⏳ Création de la hiérarchie des Utilisateurs...');
   
@@ -47,7 +50,15 @@ async function main() {
     },
   });
 
-  // Livreur 1 (Assigné par défaut au Tenant A) - 🚨 PROFIL TOTALEMENT APPROUVÉ (KYC + Véhicule)
+  // 🚨 AJOUT DU VENDEUR TEST QUOTA
+  const ownerC = await prisma.user.create({
+    data: {
+      tenantId: tenantC.id, name: 'Vendeur Gamma', email: 'vendeurC@kolisync.com',
+      phone: '0300000003', pinCode: hashedPin, role: 'OWNER',
+    },
+  });
+
+  // Livreur 1 (Assigné par défaut au Tenant A)
   const driver1 = await prisma.user.create({
     data: {
       tenantId: tenantA.id, name: 'Livreur Alpha', email: 'alpha@kolisync.com',
@@ -59,12 +70,12 @@ async function main() {
       vehicleRegistrationUrl: 'https://placehold.co/600x400/png?text=Carte+Grise+Alpha',
       licensePlate: '1234 AB 01',
       emergencyContact: 'Mère: 0700000000',
-      kycSubmittedAt: new Date(Date.now() - 86400000), // Soumis il y a 24h
+      kycSubmittedAt: new Date(Date.now() - 86400000),
       kycVerifiedAt: new Date()
     },
   });
 
-  // Livreur 2 (Assigné par défaut au Tenant B) - 🚨 PROFIL EN ATTENTE POUR TESTER LE DASHBOARD HQ
+  // Livreur 2 (Assigné par défaut au Tenant B)
   const driver2 = await prisma.user.create({
     data: {
       tenantId: tenantB.id, name: 'Livreur Beta', email: 'beta@kolisync.com',
@@ -99,7 +110,6 @@ async function main() {
   const locCocody = { lat: 5.356133, lng: -3.988583 };
 
   // --- SCÉNARIOS TENANT A ---
-  // 1. Commande en attente (PENDING)
   await prisma.order.create({
     data: {
       tenantId: tenantA.id, customerName: 'Client E2E En Attente', customerPhone: '0700000010', 
@@ -112,7 +122,6 @@ async function main() {
     }
   });
 
-  // 2. Commande assignée mais pas encore récupérée (DISPATCHED)
   await prisma.order.create({
     data: {
       tenantId: tenantA.id, driverId: driver1.id, customerName: 'Client E2E Assigné', customerPhone: '0700000011', 
@@ -128,7 +137,6 @@ async function main() {
     }
   });
 
-  // 3. Commande en cours de livraison avec GPS vérifié (IN_TRANSIT)
   await prisma.order.create({
     data: {
       tenantId: tenantA.id, driverId: driver1.id, customerName: 'Client E2E En Route', customerPhone: '0700000012', 
@@ -145,7 +153,6 @@ async function main() {
     }
   });
 
-  // 4. Commande livrée (Test du Plafond Cash)
   const orderDeliveredA = await prisma.order.create({
     data: {
       tenantId: tenantA.id, driverId: driver1.id, customerName: 'Client E2E Livré', customerPhone: '0700000013', 
@@ -162,7 +169,6 @@ async function main() {
     data: { walletId: wallet1.id, orderId: orderDeliveredA.id, amount: 100, type: 'CONTRIBUTION' }
   });
 
-  // 5. Commande en Litige (CONFLICT)
   const orderConflictA = await prisma.order.create({
     data: {
       tenantId: tenantA.id, driverId: driver1.id, customerName: 'Client E2E Litige', customerPhone: '0799999999', 
@@ -185,7 +191,7 @@ async function main() {
     }
   });
 
-  // --- SCÉNARIOS BOURSE GLOBALE (Cross-Tenant) ---
+  // --- SCÉNARIOS BOURSE GLOBALE ---
   await prisma.order.create({
     data: {
       tenantId: tenantA.id, customerName: 'Opportunité Publique 1', customerPhone: '0700000030', 
@@ -210,13 +216,43 @@ async function main() {
     }
   });
 
+  // 🚨 SCÉNARIO DE TEST QUOTA (TENANT C - 29 COMMANDES) 🚨
+  console.log('⏳ Injection de 29 commandes pour tester le Quota (Tenant C)...');
+  await Promise.all(
+    Array.from({ length: 29 }).map((_, index) => {
+      const orderNumber = index + 1;
+      return prisma.order.create({
+        data: {
+          tenantId: tenantC.id,
+          customerName: `Client Quota ${orderNumber}`,
+          customerPhone: `07500000${orderNumber.toString().padStart(2, '0')}`,
+          commune: 'Plateau',
+          deliveryAddress: 'Test Quota Limite',
+          amountDue: 5000,
+          deliveryFee: 1000,
+          pickupAddress: 'Boutique Gamma, Plateau',
+          pickupLat: locPlateau.lat,
+          pickupLng: locPlateau.lng,
+          packageStatus: 'PENDING',
+          securityPin: '0000',
+          events: {
+            create: [
+              { tenantId: tenantC.id, authorId: ownerC.id, toStatus: 'PENDING', logicalTs: 1, reason: 'Création Batch Quota' }
+            ]
+          }
+        }
+      });
+    })
+  );
+
   console.log('✅ E2E Seed complété avec succès.');
   console.log('--- CREDENTIALS DE TEST (PIN: 1234) ---');
-  console.log(`👑 Admin HQ   : 0000000000`);
-  console.log(`🏪 Vendeur A  : 0100000001`);
-  console.log(`🏪 Vendeur B  : 0200000002`);
-  console.log(`🛵 Livreur 1  : 0500000001 (✅ Approuvé - ⚠️ Proche limite cash)`);
-  console.log(`🛵 Livreur 2  : 0500000002 (⏳ En attente de validation KYC)`);
+  console.log(`👑 Admin HQ      : 0000000000`);
+  console.log(`🏪 Vendeur A     : 0100000001 (Mix de commandes)`);
+  console.log(`🏪 Vendeur B     : 0200000002`);
+  console.log(`🎯 Vendeur Gamma : 0300000003 (🚨 TEST QUOTA : 29 colis générés)`);
+  console.log(`🛵 Livreur 1     : 0500000001 (✅ Approuvé - ⚠️ Proche limite cash)`);
+  console.log(`🛵 Livreur 2     : 0500000002 (⏳ En attente de validation KYC)`);
   console.log(`\n🚨 Numéro client blacklisté pour vos tests de création : 0799999999`);
 }
 

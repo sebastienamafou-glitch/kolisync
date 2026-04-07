@@ -1,9 +1,15 @@
 import { redirect } from "next/navigation";
+import { Metadata } from "next";
 import Link from "next/link";
 import { CheckCircle2, Zap, ShieldCheck, ArrowRight, CreditCard, Lock } from "lucide-react";
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/session";
 import { createSubscriptionPaymentAction } from "@/app/actions/payment";
+
+export const metadata: Metadata = {
+  title: "Passer Pro | KoliSync",
+  description: "Débloquez la puissance totale de KoliSync pour développer votre boutique sans aucune limite.",
+};
 
 export default async function UpgradePage() {
   const session = await getSession();
@@ -48,7 +54,7 @@ export default async function UpgradePage() {
             <ShieldCheck className="mx-auto h-20 w-20 text-emerald-500 mb-6" />
             <h2 className="text-2xl font-black text-emerald-700 mb-2">Abonnement PRO Actif</h2>
             <p className="text-emerald-600/80 font-medium mb-8">
-              Votre boutique bénéficie de toutes les fonctionnalités premium et d'un nombre illimité d'expéditions.
+              Votre boutique bénéficie de toutes les fonctionnalités premium et d&apos;un nombre illimité d&apos;expéditions.
             </p>
             <Link 
               href="/b2b" 
@@ -69,7 +75,7 @@ export default async function UpgradePage() {
               <ul className="space-y-4 mb-8 flex-1">
                 <li className="flex items-center gap-3 text-slate-600 font-medium">
                   <CheckCircle2 className="h-5 w-5 text-slate-400" />
-                  Jusqu'à 30 colis inclus
+                  Jusqu&apos;à 30 colis inclus
                 </li>
                 <li className="flex items-center gap-3 text-slate-600 font-medium">
                   <CheckCircle2 className="h-5 w-5 text-slate-400" />
@@ -119,7 +125,7 @@ export default async function UpgradePage() {
                   </li>
                   <li className="flex items-center gap-3 text-slate-300 font-medium">
                     <CheckCircle2 className="h-5 w-5 text-blue-500" />
-                    Gestion d'équipe & réconciliation
+                    Gestion d&apos;équipe & réconciliation
                   </li>
                   <li className="flex items-center gap-3 text-slate-300 font-medium">
                     <CheckCircle2 className="h-5 w-5 text-blue-500" />
@@ -128,7 +134,10 @@ export default async function UpgradePage() {
                 </ul>
 
                 {/* ── CTA PAIEMENT BRANCHÉ SUR L'ACTION SERVEUR ── */}
-                <form action={createSubscriptionPaymentAction}>
+                <form action={async (formData: FormData) => {
+                  "use server";
+                  await createSubscriptionPaymentAction(formData);
+                }}>
                   <button type="submit" className="w-full flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-6 py-4 text-sm font-black text-white shadow-lg hover:bg-blue-500 transition-all active:scale-[0.98]">
                     <CreditCard className="h-5 w-5" />
                     Activer KoliSync PRO

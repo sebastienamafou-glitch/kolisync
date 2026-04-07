@@ -7,7 +7,7 @@ import {
   User, 
   Calendar, 
   ShieldCheck,
-  Map // 🚨 NOUVEL IMPORT : L'icône de carte
+  Map 
 } from "lucide-react";
 import prisma from "@/lib/prisma";
 import { getSession } from "@/lib/session";
@@ -37,6 +37,12 @@ export default async function B2BOrderDetailPage({
   });
 
   if (!order) notFound();
+
+  // 🚨 CORRECTION : L'URL est calculée ici, hors de l'arbre JSX pour ne pas faire crasher TypeScript
+  const safeLocation = order.commune ? `${order.commune}, Côte d'Ivoire` : "";
+  const mapUrl = order.commune 
+    ? `https://maps.google.com/maps?q=${encodeURIComponent(safeLocation)}&t=&z=13&ie=UTF8&iwloc=&output=embed`
+    : "";
 
   return (
     <div className="mx-auto max-w-5xl space-y-8 pb-24 font-sans animate-in fade-in duration-500">
@@ -69,6 +75,7 @@ export default async function B2BOrderDetailPage({
         {/* ── COLONNE GAUCHE : INFOS CLIENT & LIVRAISON ── */}
         <div className="lg:col-span-2 space-y-6">
           <section className="rounded-[2.5rem] bg-white p-8 shadow-sm ring-1 ring-slate-200">
+            {/* 🚨 CORRECTION : Utilisation de &apos; pour l'apostrophe */}
             <h2 className="text-sm font-black uppercase tracking-widest text-slate-400 mb-6 flex items-center gap-2">
               <Package className="h-4 w-4" /> Détails de l&apos;expédition
             </h2>
@@ -121,8 +128,8 @@ export default async function B2BOrderDetailPage({
             {order.commune ? (
               <iframe
                 title="Carte de livraison"
-                src={`http://googleusercontent.com/maps.google.com/maps?q=${encodeURIComponent(order.commune + ", Côte d'Ivoire")}&t=&z=13&ie=UTF8&iwloc=&output=embed`}
-                className="absolute inset-0 z-0 h-full w-full border-0 grayscale-[20%] opacity-90 overflow-hidden"
+                src={mapUrl}
+                className="absolute inset-0 z-0 h-full w-full border-0 invert hue-rotate-180 contrast-125 opacity-80 overflow-hidden"
               />
             ) : (
               <div className="absolute inset-0 flex items-center justify-center">
@@ -130,10 +137,8 @@ export default async function B2BOrderDetailPage({
               </div>
             )}
 
-            {/* Voile d'ombre intérieur pour un effet premium */}
             <div className="absolute inset-0 z-10 pointer-events-none shadow-[inset_0_0_40px_rgba(0,0,0,0.05)]" />
 
-            {/* Bulle d'information Vendeur */}
             <div className="absolute bottom-4 left-4 z-20 flex items-center gap-3 bg-white/95 backdrop-blur-md px-4 py-3 rounded-2xl shadow-lg ring-1 ring-slate-900/5">
               <div className={`h-3 w-3 rounded-full ${
                 ["IN_TRANSIT", "DISPATCHED"].includes(order.packageStatus) 

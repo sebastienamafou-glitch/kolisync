@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/session";
+import prisma from "@/lib/prisma";
 
 export async function createSubscriptionPaymentAction(formData: FormData) {
   const session = await getSession();
@@ -11,9 +12,23 @@ export async function createSubscriptionPaymentAction(formData: FormData) {
   }
 
   const secretKey = process.env.PAYSTACK_SECRET_KEY;
-  if (!secretKey) return { error: "Configuration de paiement manquante." };
 
-  // 🚨 Correction : Aligné sur le prix de 10 000 FCFA communiqué dans l'interface B2B
+  // 🚨 MOCK MODE (Environnement de Développement)
+  // Si aucune clé Paystack n'est configurée, on simule un paiement réussi pour pouvoir tester l'UX.
+  if (!secretKey) {
+    console.log("⚠️ [MOCK MODE] Aucune clé Paystack trouvée. Simulation d'un paiement réussi...");
+    
+    await prisma.tenant.update({
+      where: { id: session.tenantId },
+      data: { isPro: true },
+    });
+
+    // Redirection immédiate vers la page d'upgrade pour voir le "Plan Pro Actif"
+    redirect("/b2b/upgrade");
+  }
+
+  // 🌍 MODE PRODUCTION (Quand tu auras tes clés Paystack)
+  // 🚨 Aligné sur le prix de 10 000 FCFA communiqué dans l'interface B2B
   const amount = 10000; 
 
   try {

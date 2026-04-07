@@ -193,31 +193,46 @@ export function B2BShell({ children, softLockState, userName, userInitials }: B2
         <SidebarContent softLockState={softLockState} userName={userName} userInitials={userInitials} />
       </aside>
 
+      {/* 🚨 CORRECTION : Rendu Conditionnel Strict (Hard Mount) */}
       <div className="md:hidden">
         {isMobileMenuOpen && (
-          <div className="fixed inset-0 z-40 bg-slate-900/80 backdrop-blur-sm transition-opacity" onClick={() => setIsMobileMenuOpen(false)} />
+          <div className="relative z-[9999]">
+            {/* Voile sombre cliquable */}
+            <div 
+              className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm" 
+              onClick={() => setIsMobileMenuOpen(false)} 
+            />
+            {/* Menu Physique avec animation CSS native */}
+            <aside 
+              className="fixed inset-y-0 left-0 w-64 bg-slate-900 shadow-2xl"
+              style={{ animation: 'slideMenuIn 0.3s cubic-bezier(0.16, 1, 0.3, 1)' }}
+            >
+              <style>{`
+                @keyframes slideMenuIn {
+                  0% { transform: translateX(-100%); }
+                  100% { transform: translateX(0); }
+                }
+              `}</style>
+              <SidebarContent closeMobileMenu={() => setIsMobileMenuOpen(false)} softLockState={softLockState} userName={userName} userInitials={userInitials} />
+            </aside>
+          </div>
         )}
-        <aside className={`fixed inset-y-0 left-0 z-50 w-64 transform transition-transform duration-300 ease-in-out ${isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"}`}>
-          <SidebarContent closeMobileMenu={() => setIsMobileMenuOpen(false)} softLockState={softLockState} userName={userName} userInitials={userInitials} />
-        </aside>
       </div>
 
       <main className="flex flex-1 flex-col overflow-hidden">
-  
-        <header className="relative z-30 flex h-16 shrink-0 items-center justify-between border-b border-slate-200 bg-white px-4 md:px-8">
+        <header className="flex h-16 shrink-0 items-center justify-between border-b border-slate-200 bg-white px-4 md:px-8">
           <div className="flex items-center gap-3">
+            
+            {/* 🚨 BOUTON SÉCURISÉ : type="button" et pointer-events-none sur le SVG */}
             <button 
               type="button"
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                setIsMobileMenuOpen(true);
-              }} 
-              className="relative z-50 flex cursor-pointer items-center justify-center rounded-md p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-900 md:hidden"
+              onClick={() => setIsMobileMenuOpen(true)} 
+              className="relative z-50 cursor-pointer rounded-md p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-900 md:hidden"
             >
               <Menu className="h-6 w-6 pointer-events-none" />
               <span className="sr-only">Ouvrir le menu</span>
             </button>
+
             <div>
               <h2 className="text-sm font-semibold text-slate-900">Espace Vendeur</h2>
               <p className="hidden text-xs text-slate-400 sm:block">Bienvenue, bonne journée 👋</p>
