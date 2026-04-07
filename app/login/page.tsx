@@ -324,11 +324,12 @@ export default function LoginPage() {
                   placeholder="••••"
                   required
                 />
+                {/* 🚨 CORRECTION : Ajout de z-10 pour passer au-dessus de l'input */}
                 <button
                   type="button"
                   aria-label={showPin ? "Masquer le PIN" : "Afficher le PIN"}
-                  className="eye-btn"
-                  onClick={() => setShowPin(v => !v)}
+                  className="eye-btn z-10 cursor-pointer"
+                  onClick={() => setShowPin(!showPin)}
                 >
                   {showPin
                     ? <EyeOff className="h-4 w-4" />

@@ -172,7 +172,8 @@ export default async function B2BDashboardPage({
               Synchronisé en temps réel
             </p>
           </div>
-          <Link href="/b2b/create" className="flex items-center justify-center gap-2 rounded-2xl bg-slate-900 px-6 py-3.5 text-sm font-black text-white shadow-xl shadow-slate-900/20 transition-transform hover:bg-slate-800 active:scale-95">
+          {/* 🚨 CORRECTION : Lien mis à jour vers la bonne route d'expédition */}
+          <Link href="/b2b/packages/new" className="flex items-center justify-center gap-2 rounded-2xl bg-slate-900 px-6 py-3.5 text-sm font-black text-white shadow-xl shadow-slate-900/20 transition-transform hover:bg-slate-800 active:scale-95">
             <Plus className="h-5 w-5" />
             Nouvelle expédition
           </Link>

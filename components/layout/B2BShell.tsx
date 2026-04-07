@@ -205,7 +205,12 @@ export function B2BShell({ children, softLockState, userName, userInitials }: B2
       <main className="flex flex-1 flex-col overflow-hidden">
         <header className="flex h-16 shrink-0 items-center justify-between border-b border-slate-200 bg-white px-4 md:px-8">
           <div className="flex items-center gap-3">
-            <button onClick={() => setIsMobileMenuOpen(true)} className="rounded-md p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-900 md:hidden">
+            {/* 🚨 CORRECTION : Force le bouton au premier plan avec type="button" et z-50 */}
+            <button 
+              type="button"
+              onClick={() => setIsMobileMenuOpen(true)} 
+              className="relative z-50 cursor-pointer rounded-md p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-900 md:hidden"
+            >
               <Menu className="h-5 w-5" />
               <span className="sr-only">Ouvrir le menu</span>
             </button>

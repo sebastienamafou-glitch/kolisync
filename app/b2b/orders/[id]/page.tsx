@@ -120,14 +120,9 @@ export default async function B2BOrderDetailPage({
           <div className="relative h-64 w-full rounded-[2.5rem] overflow-hidden ring-1 ring-slate-200 bg-slate-100">
             {order.commune ? (
               <iframe
-                width="100%"
-                height="100%"
-                frameBorder="0"
-                scrolling="no"
-                marginHeight={0}
-                marginWidth={0}
+                title="Carte de livraison"
                 src={`http://googleusercontent.com/maps.google.com/maps?q=${encodeURIComponent(order.commune + ", Côte d'Ivoire")}&t=&z=13&ie=UTF8&iwloc=&output=embed`}
-                className="absolute inset-0 z-0 grayscale-[20%] opacity-90"
+                className="absolute inset-0 z-0 h-full w-full border-0 grayscale-[20%] opacity-90 overflow-hidden"
               />
             ) : (
               <div className="absolute inset-0 flex items-center justify-center">
